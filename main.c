@@ -17,6 +17,7 @@ enum {
   OP_MAKE_TUPLE,
   OP_MAKE_CLOSURE,
   OP_INVOKE,
+  OP_TAIL,
   OP_RETURN
 };
 
@@ -121,6 +122,8 @@ typedef struct entry {
   size_t index;
 } entry_t;
 
+int entry_matches(entry_t *entry, const char *begin, const char *end) { return 0; }
+
 typedef struct scope {
   struct scope *outer;
   entry_t *locals;
@@ -130,8 +133,31 @@ typedef struct scope {
 } scope_t;
 
 scope_t *create_empty_scope() { return NULL; }
+entry_t *scope_add_local(scope_t *scope, const char *begin, const char *end) { return NULL; }
+entry_t *scope_add_capture(scope_t *scope, const char *begin, const char *end, entry_t *parent) { return NULL; }
 scope_t *create_scope_from_params(ast_name_iter_t *params, scope_t *outer) { return NULL; }
-entry_t *scope_lookup(scope_t *scope, const char *begin, const char *end) { return NULL; }
+
+entry_t *scope_lookup(scope_t *scope, const char *begin, const char *end) {
+  if (scope == NULL) {
+    // todo: unbounded name
+    return NULL;
+  }
+  for (entry_t *entry = scope->locals; entry != NULL; entry = entry->next) {
+    if (entry_matches(entry, begin, end)) {
+      return entry;
+    }
+  }
+  for (entry_t *entry = scope->captures; entry != NULL; entry = entry->next) {
+    if (entry_matches(entry, begin, end)) {
+      return entry;
+    }
+  }
+  entry_t *parent = scope_lookup(scope->outer, begin, end);
+  if (parent == NULL) return NULL;
+  entry_t *entry = scope_add_capture(scope, begin, end, parent);
+  if (entry == NULL) return NULL;
+  return entry;
+}
 
 /* COMPILER */
 
@@ -168,7 +194,12 @@ code_t *compile(ast_expr_t *expr, scope_t *scope, int ret) {
   if (EXPR->code_builder_compile(BUILDER, EXPR, SCOPE, RET) < 0) return -1
 
 int code_builder_compile_literal(code_builder_t *builder, ast_expr_t *expr, scope_t *scope, int ret) {
-  return -1;
+  object_t *object = NULL;
+  int index = code_builder_add_literal(builder, object);
+  if (index < 0) return -1;
+  CODE_BUILDER_ADD_UNIT(builder, OP_PUSH_LITERAL);
+  CODE_BUILDER_ADD_UNIT(builder, index);
+  return 0;
 }
 
 int code_builder_compile_name(code_builder_t *builder, ast_expr_t *expr, scope_t *scope, int ret) {
@@ -201,9 +232,10 @@ int code_builder_compile_apply(code_builder_t *builder, ast_expr_t *expr, scope_
     CODE_BUILDER_COMPILE(builder, iter->expr, scope, 0);
   }
   CODE_BUILDER_COMPILE(builder, expr->v.apply.function, scope, 0);
-  CODE_BUILDER_ADD_UNIT(builder, OP_INVOKE);
   if (ret) {
-    CODE_BUILDER_ADD_UNIT(builder, OP_RETURN);
+    CODE_BUILDER_ADD_UNIT(builder, OP_TAIL);
+  } else {
+    CODE_BUILDER_ADD_UNIT(builder, OP_INVOKE);
   }
   return 0;
 }
@@ -217,6 +249,7 @@ int code_builder_compile_lambda(code_builder_t *builder, ast_expr_t *expr, scope
   if (index < 0) return -1;
   CODE_BUILDER_ADD_UNIT(builder, OP_PUSH_LITERAL);
   CODE_BUILDER_ADD_UNIT(builder, index);
+  // todo: check order of captures
   for (entry_t *entry = inner->captures; entry != NULL; entry = entry->next) {
     entry_t *parent = entry->parent;
     if (parent->parent != NULL) {
@@ -227,11 +260,28 @@ int code_builder_compile_lambda(code_builder_t *builder, ast_expr_t *expr, scope
     CODE_BUILDER_ADD_UNIT(builder, parent->index);
   }
   CODE_BUILDER_ADD_UNIT(builder, OP_MAKE_CLOSURE);
+  if (ret) {
+    CODE_BUILDER_ADD_UNIT(builder, OP_RETURN);
+  }
   return 0;
 }
 
 int compile_seq(code_builder_t *builder, ast_expr_t *expr, scope_t *scope, int ret) {
-  return -1;
+  ast_expr_iter_t *iter = expr->v.seq.exprs;
+  ast_expr_iter_t *next;
+  for (;;) {
+    next = iter->next;
+    CODE_BUILDER_COMPILE(builder, iter->expr, scope, 0);
+    if (next == NULL) {
+      break;
+    }
+    CODE_BUILDER_ADD_UNIT(builder, OP_POP);
+    iter = next;
+  }
+  if (ret) {
+    CODE_BUILDER_ADD_UNIT(builder, OP_RETURN);
+  }
+  return 0;
 }
 
 int main() {
@@ -239,7 +289,7 @@ BLACKHOLE(
   string_t *source = read();
   ast_expr_t *expr = parse(source);
   scope_t *scope = create_empty_scope();
-  code_t *code = compile(expr, scope, 0);
+  code_t *code = compile(expr, scope, 1);
   heap_gc(&code);
 )
   // interpreting
