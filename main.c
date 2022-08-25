@@ -122,6 +122,17 @@ typedef struct entry {
   size_t index;
 } entry_t;
 
+entry_t *create_entry(const char *begin, const char *end, entry_t *parent, entry_t *next, size_t index) {
+  entry_t *entry = (entry_t *) simple_alloc(sizeof(entry_t));
+  if (entry == NULL) return NULL;
+  entry->name.begin = begin;
+  entry->name.end = end;
+  entry->parent = parent;
+  entry->next = next;
+  entry->index = index;
+  return entry;
+}
+
 int entry_matches(entry_t *entry, const char *begin, const char *end) { return 0; }
 
 typedef struct scope {
@@ -132,29 +143,84 @@ typedef struct scope {
   size_t ncaptures;
 } scope_t;
 
-scope_t *create_empty_scope() { return NULL; }
-entry_t *scope_add_local(scope_t *scope, const char *begin, const char *end) { return NULL; }
-entry_t *scope_add_capture(scope_t *scope, const char *begin, const char *end, entry_t *parent) { return NULL; }
-scope_t *create_scope_from_params(ast_name_iter_t *params, scope_t *outer) { return NULL; }
+scope_t *create_empty_scope() {
+  scope_t *scope = (scope_t *) simple_alloc(sizeof(scope_t));
+  if (scope == NULL) return NULL;
+  scope->outer = NULL;
+  scope->locals = NULL;
+  scope->captures = NULL;
+  scope->nlocals = 0;
+  scope->ncaptures = 0;
+  return scope;
+}
+
+entry_t *scope_add_local(scope_t *scope, const char *begin, const char *end) {
+  entry_t *entry = create_entry(begin, end, NULL, scope->locals, scope->nlocals++);
+  if (entry == NULL) return NULL;
+  scope->locals = entry;
+  return entry;
+}
+
+entry_t *scope_add_capture(scope_t *scope, const char *begin, const char *end, entry_t *parent) {
+  entry_t *entry = create_entry(begin, end, parent, scope->captures, scope->ncaptures++);
+  if (entry == NULL) return NULL;
+  scope->captures = entry;
+  return entry;
+}
+
+static entry_t *scope_find_local(scope_t *scope, const char *begin, const char *end) {
+  for (entry_t *entry = scope->locals; entry != NULL; entry = entry->next) {
+    if (entry_matches(entry, begin, end)) {
+      return entry;
+    }
+  }
+  return NULL;
+}
+
+static entry_t *scope_find_capture(scope_t *scope, const char *begin, const char *end) {
+  for (entry_t *entry = scope->captures; entry != NULL; entry = entry->next) {
+    if (entry_matches(entry, begin, end)) {
+      return entry;
+    }
+  }
+  return NULL;
+}
+
+scope_t *create_scope_from_params(ast_name_iter_t *params, scope_t *outer) {
+  scope_t *scope = create_empty_scope();
+  if (scope == NULL) return NULL;
+  scope->outer = outer;
+  for (ast_name_iter_t *iter = params; iter != NULL; iter = iter->next) {
+    const char *begin = iter->name.begin;
+    const char *end = iter->name.end;
+    entry_t *entry = scope_find_local(scope, begin, end);
+    if (entry != NULL) {
+      // todo: duplicated params
+      return NULL;
+    }
+    entry = scope_add_local(scope, begin, end);
+    if (entry == NULL) return NULL;
+  }
+  return scope;
+}
 
 entry_t *scope_lookup(scope_t *scope, const char *begin, const char *end) {
   if (scope == NULL) {
     // todo: unbounded name
     return NULL;
   }
-  for (entry_t *entry = scope->locals; entry != NULL; entry = entry->next) {
-    if (entry_matches(entry, begin, end)) {
-      return entry;
-    }
+  entry_t *entry;
+  entry = scope_find_local(scope, begin, end);
+  if (entry != NULL) {
+    return entry;
   }
-  for (entry_t *entry = scope->captures; entry != NULL; entry = entry->next) {
-    if (entry_matches(entry, begin, end)) {
-      return entry;
-    }
+  entry = scope_find_capture(scope, begin, end);
+  if (entry != NULL) {
+    return entry;
   }
   entry_t *parent = scope_lookup(scope->outer, begin, end);
   if (parent == NULL) return NULL;
-  entry_t *entry = scope_add_capture(scope, begin, end, parent);
+  entry = scope_add_capture(scope, begin, end, parent);
   if (entry == NULL) return NULL;
   return entry;
 }
