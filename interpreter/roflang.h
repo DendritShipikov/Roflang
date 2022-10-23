@@ -30,7 +30,7 @@ typedef struct cell {
     } cons;
     struct {
       struct cell *lambda;
-      struct cell *locals;
+      struct cell *env;
     } closure;
     struct {
       struct cell *object;
@@ -39,8 +39,8 @@ typedef struct cell {
       char name;
     } identifier;
     struct {
+      struct cell *param;
       struct cell *body;
-      char param;
     } lambda;
     struct {
       struct cell *function;
@@ -50,6 +50,17 @@ typedef struct cell {
   struct cell *forward;
   int tag;
 } cell_t;
+
+#define TAG(C) ((C)->tag)
+#define FORWARD(C) ((C)->forward)
+#define AS_INTEGER(C) ((C)->data.integer)
+#define AS_SYMBOL(C) ((C)->data.symbol)
+#define AS_CONS(C) ((C)->data.cons)
+#define AS_CLOSURE(C) ((C)->data.closure)
+#define AS_LITERAL(C) ((C)->data.literal)
+#define AS_IDENTIFIER(C) ((C)->data.identifier)
+#define AS_LAMBDA(C) ((C)->data.lambda)
+#define AS_APPLICATION(C) ((C)->data.application)
 
 /*
  *             HEAP SPACE          FREE SPACE      STACK SPACE
@@ -70,24 +81,27 @@ struct vm {
 
 /* size of free space = vm.sp - vm.hp */
 
-extern struct vm *vm;
+extern struct vm vm;
 
 enum {
   OP_HALT,
   OP_EVAL,
+  OP_EVALFUNC,
   OP_APPLY
 };
 
 extern cell_t opcodes[];
 
+cell_t *run();
+
 /* constructors without memory checks */
 cell_t *new_integer(int unboxed);
 cell_t *new_symbol(char unboxed);
 cell_t *new_cons(cell_t *head, cell_t *tail);
-cell_t *new_closure(cell_t *lambda, cell_t *locals);
+cell_t *new_closure(cell_t *lambda, cell_t *env);
 cell_t *new_literal(cell_t *object);
 cell_t *new_identifier(char name);
-cell_t *new_lambda(char param, cell_t *body);
+cell_t *new_lambda(cell_t *param, cell_t *body);
 cell_t *new_application(cell_t *function, cell_t *argument);
 
 #endif
