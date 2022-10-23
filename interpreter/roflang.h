@@ -72,6 +72,14 @@ struct vm {
 
 extern struct vm *vm;
 
+enum {
+  OP_HALT,
+  OP_EVAL,
+  OP_APPLY
+};
+
+extern cell_t opcodes[];
+
 /* constructors without memory checks */
 cell_t *new_integer(int unboxed);
 cell_t *new_symbol(char unboxed);

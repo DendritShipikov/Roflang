@@ -2,6 +2,16 @@
 
 struct vm *vm = NULL;
 
+#define OPCODE(OP) { .data = { .integer = {OP} }, .forward = NULL, .tag = INTEGER_TAG }
+
+cell_t opcodes[] = {
+  [OP_HALT] = OPCODE(OP_HALT),
+  [OP_EVAL] = OPCODE(OP_EVAL),
+  [OP_APPLY] = OPCODE(OP_APPLY)
+};
+
+/* constructors */
+
 cell_t *new_integer(int unboxed) {
   cell_t *cell = vm->hp++;
   cell->tag = INTEGER_TAG;
