@@ -13,7 +13,8 @@ enum {
   LITERAL_TAG,
   IDENTIFIER_TAG,
   LAMBDA_TAG,
-  APPLICATION_TAG
+  APPLICATION_TAG,
+  BINOP_TAG
 };
 
 typedef struct cell {
@@ -46,12 +47,18 @@ typedef struct cell {
       struct cell *function;
       struct cell *argument;
     } application;
+    struct {
+      struct cell *left;
+      struct cell *right;
+    } binop;
   } data;
   struct cell *forward;
-  int tag;
+  unsigned char tag;
+  unsigned char ind;
 } cell_t;
 
 #define TAG(C) ((C)->tag)
+#define IND(C) ((C)->ind)
 #define FORWARD(C) ((C)->forward)
 #define AS_INTEGER(C) ((C)->data.integer)
 #define AS_SYMBOL(C) ((C)->data.symbol)
@@ -61,6 +68,7 @@ typedef struct cell {
 #define AS_IDENTIFIER(C) ((C)->data.identifier)
 #define AS_LAMBDA(C) ((C)->data.lambda)
 #define AS_APPLICATION(C) ((C)->data.application)
+#define AS_BINOP(C) ((C)->data.binop)
 
 /*
  *             HEAP SPACE          FREE SPACE      STACK SPACE
@@ -87,7 +95,11 @@ enum {
   OP_HALT,
   OP_EVAL,
   OP_EVALFUNC,
-  OP_APPLY
+  OP_APPLY,
+  OP_BINOP,
+  OP_ADD,
+  OP_SUB,
+  OP_MUL
 };
 
 extern cell_t opcodes[];
@@ -103,5 +115,6 @@ cell_t *new_literal(cell_t *object);
 cell_t *new_identifier(char name);
 cell_t *new_lambda(cell_t *param, cell_t *body);
 cell_t *new_application(cell_t *function, cell_t *argument);
+cell_t *new_binop(cell_t *left, cell_t *right, char kind);
 
 #endif

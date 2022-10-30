@@ -19,6 +19,9 @@ int tokenize(struct lexer *lex) {
       return lex->kind = 0;
     case '(':
     case ')':
+    case '*':
+    case '+':
+    case '-':
     case '\\':
       return lex->kind = c;
     default:
@@ -42,12 +45,14 @@ int tokenize(struct lexer *lex) {
 }
 
 cell_t *parse_expr(struct lexer *lex);
+cell_t *parse_sumb(struct lexer *lex);
+cell_t *parse_prod(struct lexer *lex);
 cell_t *parse_appl(struct lexer *lex);
 cell_t *parse_term(struct lexer *lex);
 
 cell_t *parse_expr(struct lexer *lex) {
   if (lex->kind != '\\') {
-    return parse_appl(lex);
+    return parse_sumb(lex);
   }
   tokenize(lex);
   if (lex->kind != 'a') {
@@ -61,6 +66,33 @@ cell_t *parse_expr(struct lexer *lex) {
   if (vm.sp - vm.hp < 2) { fprintf(stderr, "Error: memory is out\n"); return NULL; }
   cell_t *lambda = new_lambda(new_identifier(name), body);
   return lambda;
+}
+
+cell_t *parse_sumb(struct lexer *lex) {
+  cell_t *sumb = parse_prod(lex);
+  if (sumb == NULL) return NULL;
+  while (lex->kind == '+' || lex->kind == '-') {
+    char kind = lex->kind == '+' ? OP_ADD : OP_SUB;
+    tokenize(lex);
+    cell_t *prod = parse_prod(lex);
+    if (prod == NULL) return NULL;
+    if (vm.sp - vm.hp < 1) { fprintf(stderr, "Error: memory is out\n"); return NULL; }
+    sumb = new_binop(sumb, prod, kind);
+  }
+  return sumb;
+}
+
+cell_t *parse_prod(struct lexer *lex) {
+  cell_t *prod = parse_appl(lex);
+  if (prod == NULL) return NULL;
+  while (lex->kind == '*') {
+    tokenize(lex);
+    cell_t *appl = parse_appl(lex);
+    if (appl == NULL) return NULL;
+    if (vm.sp - vm.hp < 1) { fprintf(stderr, "Error: memory is out\n"); return NULL; }
+    prod = new_binop(prod, appl, OP_MUL);
+  }
+  return prod;
 }
 
 cell_t *parse_appl(struct lexer *lex) {
@@ -142,6 +174,7 @@ void print_cell(cell_t *cell) {
     case IDENTIFIER_TAG:
     case LAMBDA_TAG:
     case APPLICATION_TAG:
+    case BINOP_TAG:
       printf("<ast>");
       return;
     default:
@@ -151,7 +184,7 @@ void print_cell(cell_t *cell) {
 }
 
 void print_ast(cell_t *cell) {
-  switch (cell->tag) {
+  switch (TAG(cell)) {
     case LITERAL_TAG:
       printf("%d", cell->data.literal.object->data.integer.unboxed);
       return;
@@ -171,6 +204,23 @@ void print_ast(cell_t *cell) {
       print_ast(cell->data.application.argument);
       printf(")");
       return;
+    case BINOP_TAG:
+      printf("(");
+      print_ast(cell->data.binop.left);
+      switch (IND(cell)) {
+        case OP_ADD:
+          printf(" + ");
+          break;
+        case OP_SUB:
+          printf(" - ");
+          break;
+        case OP_MUL:
+          printf(" * ");
+          break;
+      }
+      print_ast(cell->data.binop.right);
+      printf(")");
+      return;
     default:
       printf("X3");
   }
@@ -179,7 +229,7 @@ void print_ast(cell_t *cell) {
 #define VALUE(C) (AS_CONS(C).head)
 
 int main() {
-  cell_t nil = { .data = { .integer = {0} }, .tag = NIL_TAG, .forward = NULL };
+  cell_t nil = { .data = { .integer = {0} }, .forward = NULL, .tag = NIL_TAG, .ind = 0 };
   cell_t *cell = parse(stdin);
   if (cell == NULL) return 1;
   print_ast(cell);
