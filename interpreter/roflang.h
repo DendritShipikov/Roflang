@@ -37,7 +37,7 @@ typedef struct cell {
       struct cell *object;
     } literal;
     struct {
-      char name;
+      struct cell *name;
     } identifier;
     struct {
       struct cell *param;
@@ -107,12 +107,13 @@ extern cell_t opcodes[];
 cell_t *run();
 
 /* constructors without memory checks */
+cell_t *new_nil();
 cell_t *new_integer(int unboxed);
 cell_t *new_symbol(char unboxed);
 cell_t *new_cons(cell_t *head, cell_t *tail);
 cell_t *new_closure(cell_t *lambda, cell_t *env);
 cell_t *new_literal(cell_t *object);
-cell_t *new_identifier(char name);
+cell_t *new_identifier(cell_t *name);
 cell_t *new_lambda(cell_t *param, cell_t *body);
 cell_t *new_application(cell_t *function, cell_t *argument);
 cell_t *new_binop(cell_t *left, cell_t *right, char kind);

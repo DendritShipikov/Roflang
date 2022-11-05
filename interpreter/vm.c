@@ -45,7 +45,16 @@ cell_t *run() {
             object = NULL;
             for (env = VALUE(vm.sp + 1); TAG(env) != NIL_TAG; env = AS_CONS(env).tail) {
               cons = AS_CONS(env).head;
-              if (AS_IDENTIFIER(AS_CONS(cons).head).name == AS_IDENTIFIER(vm.ar).name) {
+              cell_t *p = AS_IDENTIFIER(AS_CONS(cons).head).name;
+              cell_t *q = AS_IDENTIFIER(vm.ar).name;
+              while (TAG(p) != NIL_TAG && TAG(q) != NIL_TAG) {
+                if (AS_SYMBOL(AS_CONS(p).head).unboxed != AS_SYMBOL(AS_CONS(q).head).unboxed) {
+                  break;
+                }
+                p = AS_CONS(p).tail;
+                q = AS_CONS(q).tail;
+              }
+              if (TAG(p) == NIL_TAG && TAG(q) == NIL_TAG) {
                 object = AS_CONS(cons).tail;
                 break;
               }
@@ -156,6 +165,11 @@ MEMORY_ERROR:
 
 /* constructors */
 
+cell_t *new_nil() {
+  static cell_t nil = { .data = { .integer = {0} }, .forward = NULL, .tag = NIL_TAG, .ind = 0 };
+  return &nil;
+}
+
 cell_t *new_integer(int unboxed) {
   cell_t *cell = vm.hp++;
   TAG(cell) = INTEGER_TAG;
@@ -193,7 +207,7 @@ cell_t *new_literal(cell_t *object) {
   return cell;
 }
 
-cell_t *new_identifier(char name) {
+cell_t *new_identifier(cell_t *name) {
   cell_t *cell = vm.hp++;
   TAG(cell) = IDENTIFIER_TAG;
   cell->data.identifier.name = name;

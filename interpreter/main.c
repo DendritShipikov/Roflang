@@ -3,8 +3,8 @@
 
 struct lexer {
   FILE *file;
+  cell_t *value;
   int kind;
-  int value;
 };
 
 int is_space(int c) { return c == ' ' || c == '\t' || c == '\n' || c == '\r'; }
@@ -28,17 +28,24 @@ int tokenize(struct lexer *lex) {
       break;
   }
   if (is_digit(c)) {
-    long long value = 0;
+    long long unboxed = 0;
     do {
-      value = 10 * value + c -'0';
-      if (value > INT_MAX) return lex->kind = -1;
+      unboxed = 10 * unboxed + c -'0';
+      if (unboxed > INT_MAX) return lex->kind = -1;
     } while (is_digit(c = fgetc(lex->file)));
     ungetc(c, lex->file);
-    lex->value = (int) value;
+    if (vm.sp - vm.hp < 1) { fprintf(stderr, "Error: memory is out\n"); return lex->kind = -1; }
+    lex->value = new_integer(unboxed);
     return lex->kind = '0';
   }
   if (is_alpha(c)) {
-    lex->value = c;
+    cell_t *value = new_nil();
+    do {
+      if (vm.sp - vm.hp < 2) { fprintf(stderr, "Error: memory is out\n"); return lex->kind = -1; }
+      value = new_cons(new_symbol(c), value);
+    } while (is_alpha(c = fgetc(lex->file)));
+    ungetc(c, lex->file);
+    lex->value = value;
     return lex->kind = 'a';
   }
   return lex->kind = -1;
@@ -59,7 +66,7 @@ cell_t *parse_expr(struct lexer *lex) {
     fprintf(stderr, "Error: expected param of lambda\n");
     return NULL;
   }
-  char name = (char) lex->value;
+  cell_t *name = lex->value;
   tokenize(lex);
   cell_t *body = parse_expr(lex);
   if (body == NULL) return NULL;
@@ -111,13 +118,13 @@ cell_t *parse_term(struct lexer *lex) {
   cell_t *term, *expr;
   switch (lex->kind) {
     case '0':
-      if (vm.sp - vm.hp < 2) { fprintf(stderr, "Error: memory is out\n"); return NULL; }
-      term = new_literal(new_integer(lex->value));
+      if (vm.sp - vm.hp < 1) { fprintf(stderr, "Error: memory is out\n"); return NULL; }
+      term = new_literal(lex->value);
       tokenize(lex);
       return term;
     case 'a':
       if (vm.sp - vm.hp < 1) { fprintf(stderr, "Error: memory is out\n"); return NULL; }
-      term = new_identifier((char) lex->value);
+      term = new_identifier(lex->value);
       tokenize(lex);
       return term;
     case '(':
@@ -189,7 +196,10 @@ void print_ast(cell_t *cell) {
       printf("%d", cell->data.literal.object->data.integer.unboxed);
       return;
     case IDENTIFIER_TAG:
-      printf("%c", cell->data.identifier.name);
+      for (cell_t *name = cell->data.identifier.name; TAG(name) != NIL_TAG; name = AS_CONS(name).tail) {
+        cell_t *symbol = AS_CONS(name).head;
+        printf("%c", AS_SYMBOL(symbol).unboxed);
+      }
       return;
     case LAMBDA_TAG:
       printf("\\");
@@ -229,14 +239,13 @@ void print_ast(cell_t *cell) {
 #define VALUE(C) (AS_CONS(C).head)
 
 int main() {
-  cell_t nil = { .data = { .integer = {0} }, .forward = NULL, .tag = NIL_TAG, .ind = 0 };
   cell_t *cell = parse(stdin);
   if (cell == NULL) return 1;
   print_ast(cell);
   printf("\n");
   vm.sp -= 3;
   VALUE(vm.sp + 0) = &opcodes[OP_EVAL];
-  VALUE(vm.sp + 1) = &nil;
+  VALUE(vm.sp + 1) = new_nil();
   VALUE(vm.sp + 2) = &opcodes[OP_HALT];
   vm.ar = cell;
   printf("RUN...\n");
