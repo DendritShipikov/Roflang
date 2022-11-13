@@ -11,7 +11,7 @@ int is_space(int c) { return c == ' ' || c == '\t' || c == '\n' || c == '\r'; }
 int is_alpha(int c) { return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'); }
 int is_digit(int c) { return '0' <= c && c <= '9'; }
 
-int tokenize(struct lexer *lex) {
+int tokenize(struct vm *vm, struct lexer *lex) {
   int c;
   while (is_space(c = fgetc(lex->file))) ;
   switch (c) {
@@ -34,15 +34,15 @@ int tokenize(struct lexer *lex) {
       if (unboxed > INT_MAX) return lex->kind = -1;
     } while (is_digit(c = fgetc(lex->file)));
     ungetc(c, lex->file);
-    if (vm.sp - vm.hp < 1) { fprintf(stderr, "Error: memory is out\n"); return lex->kind = -1; }
-    lex->value = new_integer(unboxed);
+    if (vm->sp - vm->hp < 1) { fprintf(stderr, "Error: memory is out\n"); return lex->kind = -1; }
+    lex->value = new_integer(vm, unboxed);
     return lex->kind = '0';
   }
   if (is_alpha(c)) {
     cell_t *value = new_nil();
     do {
-      if (vm.sp - vm.hp < 2) { fprintf(stderr, "Error: memory is out\n"); return lex->kind = -1; }
-      value = new_cons(new_symbol(c), value);
+      if (vm->sp - vm->hp < 2) { fprintf(stderr, "Error: memory is out\n"); return lex->kind = -1; }
+      value = new_cons(vm, new_symbol(vm, c), value);
     } while (is_alpha(c = fgetc(lex->file)));
     ungetc(c, lex->file);
     lex->value = value;
@@ -51,90 +51,90 @@ int tokenize(struct lexer *lex) {
   return lex->kind = -1;
 }
 
-cell_t *parse_expr(struct lexer *lex);
-cell_t *parse_sumb(struct lexer *lex);
-cell_t *parse_prod(struct lexer *lex);
-cell_t *parse_appl(struct lexer *lex);
-cell_t *parse_term(struct lexer *lex);
+cell_t *parse_expr(struct vm *vm, struct lexer *lex);
+cell_t *parse_sumb(struct vm *vm, struct lexer *lex);
+cell_t *parse_prod(struct vm *vm, struct lexer *lex);
+cell_t *parse_appl(struct vm *vm, struct lexer *lex);
+cell_t *parse_term(struct vm *vm, struct lexer *lex);
 
-cell_t *parse_expr(struct lexer *lex) {
+cell_t *parse_expr(struct vm *vm, struct lexer *lex) {
   if (lex->kind != '\\') {
-    return parse_sumb(lex);
+    return parse_sumb(vm, lex);
   }
-  tokenize(lex);
+  tokenize(vm, lex);
   if (lex->kind != 'a') {
     fprintf(stderr, "Error: expected param of lambda\n");
     return NULL;
   }
   cell_t *name = lex->value;
-  tokenize(lex);
-  cell_t *body = parse_expr(lex);
+  tokenize(vm, lex);
+  cell_t *body = parse_expr(vm, lex);
   if (body == NULL) return NULL;
-  if (vm.sp - vm.hp < 2) { fprintf(stderr, "Error: memory is out\n"); return NULL; }
-  cell_t *lambda = new_lambda(new_identifier(name), body);
+  if (vm->sp - vm->hp < 2) { fprintf(stderr, "Error: memory is out\n"); return NULL; }
+  cell_t *lambda = new_lambda(vm, new_identifier(vm, name), body);
   return lambda;
 }
 
-cell_t *parse_sumb(struct lexer *lex) {
-  cell_t *sumb = parse_prod(lex);
+cell_t *parse_sumb(struct vm *vm, struct lexer *lex) {
+  cell_t *sumb = parse_prod(vm, lex);
   if (sumb == NULL) return NULL;
   while (lex->kind == '+' || lex->kind == '-') {
     char kind = lex->kind == '+' ? OP_ADD : OP_SUB;
-    tokenize(lex);
-    cell_t *prod = parse_prod(lex);
+    tokenize(vm, lex);
+    cell_t *prod = parse_prod(vm, lex);
     if (prod == NULL) return NULL;
-    if (vm.sp - vm.hp < 1) { fprintf(stderr, "Error: memory is out\n"); return NULL; }
-    sumb = new_binop(sumb, prod, kind);
+    if (vm->sp - vm->hp < 1) { fprintf(stderr, "Error: memory is out\n"); return NULL; }
+    sumb = new_binop(vm, sumb, prod, kind);
   }
   return sumb;
 }
 
-cell_t *parse_prod(struct lexer *lex) {
-  cell_t *prod = parse_appl(lex);
+cell_t *parse_prod(struct vm *vm, struct lexer *lex) {
+  cell_t *prod = parse_appl(vm, lex);
   if (prod == NULL) return NULL;
   while (lex->kind == '*') {
-    tokenize(lex);
-    cell_t *appl = parse_appl(lex);
+    tokenize(vm, lex);
+    cell_t *appl = parse_appl(vm, lex);
     if (appl == NULL) return NULL;
-    if (vm.sp - vm.hp < 1) { fprintf(stderr, "Error: memory is out\n"); return NULL; }
-    prod = new_binop(prod, appl, OP_MUL);
+    if (vm->sp - vm->hp < 1) { fprintf(stderr, "Error: memory is out\n"); return NULL; }
+    prod = new_binop(vm, prod, appl, OP_MUL);
   }
   return prod;
 }
 
-cell_t *parse_appl(struct lexer *lex) {
-  cell_t *appl = parse_term(lex);
+cell_t *parse_appl(struct vm *vm, struct lexer *lex) {
+  cell_t *appl = parse_term(vm, lex);
   if (appl == NULL) return NULL;
   while (lex->kind == '0' || lex->kind == 'a' || lex->kind == '(') {
-    cell_t *term = parse_term(lex);
+    cell_t *term = parse_term(vm, lex);
     if (term == NULL) return NULL;
-    if (vm.sp - vm.hp < 1) { fprintf(stderr, "Error: memory is out\n"); return NULL; }
-    appl = new_application(appl, term);
+    if (vm->sp - vm->hp < 1) { fprintf(stderr, "Error: memory is out\n"); return NULL; }
+    appl = new_application(vm, appl, term);
   }
   return appl;
 }
 
-cell_t *parse_term(struct lexer *lex) {
+cell_t *parse_term(struct vm *vm, struct lexer *lex) {
   cell_t *term, *expr;
   switch (lex->kind) {
     case '0':
-      if (vm.sp - vm.hp < 1) { fprintf(stderr, "Error: memory is out\n"); return NULL; }
-      term = new_literal(lex->value);
-      tokenize(lex);
+      if (vm->sp - vm->hp < 1) { fprintf(stderr, "Error: memory is out\n"); return NULL; }
+      term = new_literal(vm, lex->value);
+      tokenize(vm, lex);
       return term;
     case 'a':
-      if (vm.sp - vm.hp < 1) { fprintf(stderr, "Error: memory is out\n"); return NULL; }
-      term = new_identifier(lex->value);
-      tokenize(lex);
+      if (vm->sp - vm->hp < 1) { fprintf(stderr, "Error: memory is out\n"); return NULL; }
+      term = new_identifier(vm, lex->value);
+      tokenize(vm, lex);
       return term;
     case '(':
-      tokenize(lex);
-      expr = parse_expr(lex);
+      tokenize(vm, lex);
+      expr = parse_expr(vm, lex);
       if (lex->kind != ')') {
         fprintf(stderr, "Error: ')' expected\n");
         return NULL;
       }
-      tokenize(lex);
+      tokenize(vm, lex);
       return expr;
     default:
       fprintf(stderr, "Error: worng term\n");
@@ -142,10 +142,10 @@ cell_t *parse_term(struct lexer *lex) {
   }
 }
 
-cell_t *parse(FILE *file) {
+cell_t *parse(struct vm *vm, FILE *file) {
   struct lexer lex = { .file = file, .value = 0, .kind = 0 };
-  tokenize(&lex);
-  return parse_expr(&lex);
+  tokenize(vm, &lex);
+  return parse_expr(vm, &lex);
 }
 
 void print_cell(cell_t *cell) {
@@ -239,7 +239,15 @@ void print_ast(cell_t *cell) {
 #define VALUE(C) (AS_CONS(C).head)
 
 int main() {
-  cell_t *cell = parse(stdin);
+  static cell_t cells[1024];
+  static struct vm vm = {
+    .bp = cells,
+    .ep = cells + 1024,
+    .hp = cells,
+    .sp = cells + 1024,
+    .ar = NULL
+  };
+  cell_t *cell = parse(&vm, stdin);
   if (cell == NULL) return 1;
   print_ast(cell);
   printf("\n");
@@ -249,7 +257,7 @@ int main() {
   VALUE(vm.sp + 2) = &opcodes[OP_HALT];
   vm.ar = cell;
   printf("RUN...\n");
-  cell = run();
+  cell = run(&vm);
   if (cell == NULL) return 1;
   print_cell(cell);
   return 0;

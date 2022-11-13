@@ -89,8 +89,6 @@ struct vm {
 
 /* size of free space = vm.sp - vm.hp */
 
-extern struct vm vm;
-
 enum {
   OP_HALT,
   OP_EVAL,
@@ -104,18 +102,18 @@ enum {
 
 extern cell_t opcodes[];
 
-cell_t *run();
+cell_t *run(struct vm *vm);
 
 /* constructors without memory checks */
 cell_t *new_nil();
-cell_t *new_integer(int unboxed);
-cell_t *new_symbol(char unboxed);
-cell_t *new_cons(cell_t *head, cell_t *tail);
-cell_t *new_closure(cell_t *lambda, cell_t *env);
-cell_t *new_literal(cell_t *object);
-cell_t *new_identifier(cell_t *name);
-cell_t *new_lambda(cell_t *param, cell_t *body);
-cell_t *new_application(cell_t *function, cell_t *argument);
-cell_t *new_binop(cell_t *left, cell_t *right, char kind);
+cell_t *new_integer(struct vm *vm, int unboxed);
+cell_t *new_symbol(struct vm *vm, char unboxed);
+cell_t *new_cons(struct vm *vm, cell_t *head, cell_t *tail);
+cell_t *new_closure(struct vm *vm, cell_t *lambda, cell_t *env);
+cell_t *new_literal(struct vm *vm, cell_t *object);
+cell_t *new_identifier(struct vm *vm, cell_t *name);
+cell_t *new_lambda(struct vm *vm, cell_t *param, cell_t *body);
+cell_t *new_application(struct vm *vm, cell_t *function, cell_t *argument);
+cell_t *new_binop(struct vm *vm, cell_t *left, cell_t *right, char kind);
 
 #endif
