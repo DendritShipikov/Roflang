@@ -257,7 +257,7 @@ int main() {
   VALUE(vm.sp + 2) = &opcodes[OP_HALT];
   vm.ar = cell;
   printf("RUN...\n");
-  cell = run(&vm);
+  cell = eval(&vm);
   if (cell == NULL) return 1;
   print_cell(cell);
   return 0;

@@ -14,9 +14,9 @@ cell_t opcodes[] = {
 };
 
 #define VALUE(C) (AS_CONS(C).head)
-#define MEMCHECK(N) if (vm->sp - vm->hp < N) goto MEMORY_ERROR;
+#define MEMCHECK(N) if (vm->sp - vm->hp < N) { gc(vm); if (vm->sp - vm->hp < N) goto MEMORY_ERROR; }
 
-cell_t *run(struct vm *vm) {
+cell_t *eval(struct vm *vm) {
   cell_t *object, *env, *cons, *right;
   for (;;) {
     switch (AS_INTEGER(VALUE(vm->sp + 0)).unboxed) {
@@ -162,6 +162,7 @@ cell_t *new_nil() {
 
 cell_t *new_integer(struct vm *vm, int unboxed) {
   cell_t *cell = vm->hp++;
+  FORWARD(cell) = NULL;
   TAG(cell) = INTEGER_TAG;
   cell->data.integer.unboxed = unboxed;
   return cell;
@@ -169,6 +170,7 @@ cell_t *new_integer(struct vm *vm, int unboxed) {
 
 cell_t *new_symbol(struct vm *vm, char unboxed) {
   cell_t *cell = vm->hp++;
+  FORWARD(cell) = NULL;
   TAG(cell) = SYMBOL_TAG;
   cell->data.symbol.unboxed = unboxed;
   return cell;
@@ -176,6 +178,7 @@ cell_t *new_symbol(struct vm *vm, char unboxed) {
 
 cell_t *new_cons(struct vm *vm, cell_t *head, cell_t *tail) {
   cell_t *cell = vm->hp++;
+  FORWARD(cell) = NULL;
   TAG(cell) = CONS_TAG;
   cell->data.cons.head = head;
   cell->data.cons.tail = tail;
@@ -184,6 +187,7 @@ cell_t *new_cons(struct vm *vm, cell_t *head, cell_t *tail) {
 
 cell_t *new_closure(struct vm *vm, cell_t *lambda, cell_t *env) {
   cell_t *cell = vm->hp++;
+  FORWARD(cell) = NULL;
   TAG(cell) = CLOSURE_TAG;
   cell->data.closure.lambda = lambda;
   cell->data.closure.env = env;
@@ -192,6 +196,7 @@ cell_t *new_closure(struct vm *vm, cell_t *lambda, cell_t *env) {
 
 cell_t *new_literal(struct vm *vm, cell_t *object) {
   cell_t *cell = vm->hp++;
+  FORWARD(cell) = NULL;
   TAG(cell) = LITERAL_TAG;
   cell->data.literal.object = object;
   return cell;
@@ -199,6 +204,7 @@ cell_t *new_literal(struct vm *vm, cell_t *object) {
 
 cell_t *new_identifier(struct vm *vm, cell_t *name) {
   cell_t *cell = vm->hp++;
+  FORWARD(cell) = NULL;
   TAG(cell) = IDENTIFIER_TAG;
   cell->data.identifier.name = name;
   return cell;
@@ -206,6 +212,7 @@ cell_t *new_identifier(struct vm *vm, cell_t *name) {
 
 cell_t *new_lambda(struct vm *vm, cell_t *param, cell_t *body) {
   cell_t *cell = vm->hp++;
+  FORWARD(cell) = NULL;
   TAG(cell) = LAMBDA_TAG;
   cell->data.lambda.param = param;
   cell->data.lambda.body = body;
@@ -214,6 +221,7 @@ cell_t *new_lambda(struct vm *vm, cell_t *param, cell_t *body) {
 
 cell_t *new_application(struct vm *vm, cell_t *function, cell_t *argument) {
   cell_t *cell = vm->hp++;
+  FORWARD(cell) = NULL;
   TAG(cell) = APPLICATION_TAG;
   cell->data.application.function = function;
   cell->data.application.argument = argument;
@@ -222,6 +230,7 @@ cell_t *new_application(struct vm *vm, cell_t *function, cell_t *argument) {
 
 cell_t *new_binop(struct vm *vm, cell_t *left, cell_t *right, char kind) {
   cell_t *cell = vm->hp++;
+  FORWARD(cell) = NULL;
   TAG(cell) = BINOP_TAG;
   IND(cell) = kind;
   cell->data.binop.left = left;

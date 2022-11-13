@@ -102,7 +102,8 @@ enum {
 
 extern cell_t opcodes[];
 
-cell_t *run(struct vm *vm);
+cell_t *eval(struct vm *vm);
+void gc(struct vm *vm);
 
 /* constructors without memory checks */
 cell_t *new_nil();
