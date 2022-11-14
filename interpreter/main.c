@@ -22,6 +22,7 @@ int tokenize(struct vm *vm, struct lexer *lex) {
     case '*':
     case '+':
     case '-':
+    case '.':
     case '\\':
       return lex->kind = c;
     default:
@@ -67,6 +68,11 @@ cell_t *parse_expr(struct vm *vm, struct lexer *lex) {
     return NULL;
   }
   cell_t *name = lex->value;
+  tokenize(vm, lex);
+  if (lex->kind != '.') {
+    fprintf(stderr, "Error: expected '.'\n");
+    return NULL;
+  }
   tokenize(vm, lex);
   cell_t *body = parse_expr(vm, lex);
   if (body == NULL) return NULL;
@@ -130,6 +136,7 @@ cell_t *parse_term(struct vm *vm, struct lexer *lex) {
     case '(':
       tokenize(vm, lex);
       expr = parse_expr(vm, lex);
+      if (expr == NULL) return NULL;
       if (lex->kind != ')') {
         fprintf(stderr, "Error: ')' expected\n");
         return NULL;
