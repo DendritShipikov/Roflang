@@ -10,7 +10,8 @@ cell_t opcodes[] = {
   [OP_BINOP] = OPCODE(OP_BINOP),
   [OP_ADD] = OPCODE(OP_ADD),
   [OP_SUB] = OPCODE(OP_SUB),
-  [OP_MUL] = OPCODE(OP_MUL)
+  [OP_MUL] = OPCODE(OP_MUL),
+  [OP_UPDATE] = OPCODE(OP_UPDATE)
 };
 
 #define VALUE(C) (AS_CONS(C).head)
@@ -52,6 +53,18 @@ cell_t *eval(struct vm *vm) {
             if (object == NULL) {
               fprintf(stderr, "Error: unbounded identifier\n");
               return NULL;
+            }
+            if (!IND(cons)) {
+              vm->ar = cons;
+              // cons EVAL:env:stack -> cons.tail EVAL:env:UPDATE:cons:stack
+              MEMCHECK(2);
+              vm->sp -= 2;
+              VALUE(vm->sp + 0) = &opcodes[OP_EVAL];
+              VALUE(vm->sp + 1) = VALUE(vm->sp + 3);
+              VALUE(vm->sp + 2) = &opcodes[OP_UPDATE];
+              VALUE(vm->sp + 3) = vm->ar;
+              vm->ar = AS_CONS(vm->ar).tail;
+              continue;
             }
             vm->sp += 2;
             vm->ar = object;
@@ -143,6 +156,13 @@ cell_t *eval(struct vm *vm) {
             fprintf(stderr, "Really?\n");
             return NULL;
         }
+      case OP_UPDATE:
+        // object UPDATE:cons:stack -> object stack
+        cons = VALUE(vm->sp + 1);
+        AS_CONS(cons).tail = vm->ar;
+        IND(cons) = 1;
+        vm->sp += 2;
+        continue;
       default:
         fprintf(stderr, "Error: wrong op\n");
         return NULL;
@@ -180,6 +200,7 @@ cell_t *new_cons(struct vm *vm, cell_t *head, cell_t *tail) {
   cell_t *cell = vm->hp++;
   FORWARD(cell) = NULL;
   TAG(cell) = CONS_TAG;
+  IND(cell) = 1;
   cell->data.cons.head = head;
   cell->data.cons.tail = tail;
   return cell;

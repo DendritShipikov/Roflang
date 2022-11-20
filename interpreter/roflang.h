@@ -97,7 +97,8 @@ enum {
   OP_BINOP,
   OP_ADD,
   OP_SUB,
-  OP_MUL
+  OP_MUL,
+  OP_UPDATE
 };
 
 extern cell_t opcodes[];
