@@ -8,7 +8,7 @@ struct lexer {
 };
 
 int is_space(int c) { return c == ' ' || c == '\t' || c == '\n' || c == '\r'; }
-int is_alpha(int c) { return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'); }
+int is_alpha(int c) { return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || c == '_'; }
 int is_digit(int c) { return '0' <= c && c <= '9'; }
 
 int tokenize(struct vm *vm, struct lexer *lex) {
@@ -89,7 +89,6 @@ cell_t *parse_stmt(struct vm *vm, struct lexer *lex) {
   if (expr == NULL) return NULL;
   if (vm->sp - vm->hp < 2) { fprintf(stderr, "Error: memory is out\n"); return NULL; }
   cell_t *stmt = new_cons(vm, new_identifier(vm, name), expr);
-  IND(stmt) = 0;
   if (lex->kind != ';') {
     fprintf(stderr, "Error: ';' expected in the end of defenition\n");
     return NULL;
@@ -295,20 +294,21 @@ int main() {
     .ep = cells + 1024,
     .hp = cells,
     .sp = cells + 1024,
-    .ar = NULL
+    .ar = NULL,
+    .gr = NULL
   };
   cell_t *cell = parse(&vm, stdin);
   if (cell == NULL) return 1;
   print_cell(cell);
   printf("\n");
-  vm.sp -= 3;
-  VALUE(vm.sp + 0) = &opcodes[OP_EVAL];
-  VALUE(vm.sp + 1) = cell;
-  VALUE(vm.sp + 2) = &opcodes[OP_HALT];
-  vm.ar = AS_CONS(AS_CONS(cell).head).tail;
+  // cell MODULE:nil
+  vm.sp -= 1;
+  VALUE(vm.sp + 0) = &opcodes[OP_MODULE];
+  vm.ar = cell;
+  vm.gr = new_nil();
   printf("RUN...\n");
   cell = eval(&vm);
   if (cell == NULL) return 1;
-  print_cell(cell);
+  print_cell(AS_CONS(AS_CONS(cell).head).tail);
   return 0;
 }

@@ -6,7 +6,7 @@
 void gc(struct vm *vm) {
 
   static cell_t dummy = { .data = { .integer = {0} }, .forward = NULL, .ind = 0, .tag = 0 };
-  cell_t *top = &dummy, *bp = vm->bp, *hp = vm->hp, *sp = vm->sp, *ep = vm->ep, *ar = vm->ar;
+  cell_t *top = &dummy, *bp = vm->bp, *hp = vm->hp, *sp = vm->sp, *ep = vm->ep, *ar = vm->ar, *gr = vm->gr;
   cell_t *p, *q;
 
   // mark
@@ -14,6 +14,7 @@ void gc(struct vm *vm) {
     PUSH(AS_CONS(p).head);
   }
   PUSH(ar);
+  PUSH(gr);
   while (FORWARD(top) != NULL) {
     p = top;
     top = FORWARD(p);
@@ -64,6 +65,7 @@ void gc(struct vm *vm) {
 
   // adjust pointers
   ADJUST(vm->ar);
+  ADJUST(vm->gr);
   for (p = sp; p < ep; ++p) {
     ADJUST(AS_CONS(p).head);
   }

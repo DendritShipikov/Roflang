@@ -85,6 +85,7 @@ struct vm {
   cell_t *hp;  // heap pointer
   cell_t *sp;  // stack pointer
   cell_t *ar;  // accumulator register
+  cell_t *gr;  // globals register
 };
 
 /* size of free space = vm.sp - vm.hp */
@@ -98,7 +99,8 @@ enum {
   OP_ADD,
   OP_SUB,
   OP_MUL,
-  OP_UPDATE
+  OP_MODULE,
+  OP_GLOBAL
 };
 
 extern cell_t opcodes[];
