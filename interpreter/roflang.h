@@ -99,6 +99,9 @@ enum {
   OP_ADD,
   OP_SUB,
   OP_MUL,
+  OP_EQUAL,
+  OP_LESS,
+  OP_GREATER,
   OP_MODULE,
   OP_GLOBAL
 };

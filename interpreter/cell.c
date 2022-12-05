@@ -17,6 +17,9 @@ cell_t *new_opcode(int op) {
     [OP_ADD] = OPCODE(OP_ADD),
     [OP_SUB] = OPCODE(OP_SUB),
     [OP_MUL] = OPCODE(OP_MUL),
+    [OP_EQUAL] = OPCODE(OP_EQUAL),
+    [OP_LESS] = OPCODE(OP_LESS),
+    [OP_GREATER] = OPCODE(OP_GREATER),
     [OP_MODULE] = OPCODE(OP_MODULE),
     [OP_GLOBAL] = OPCODE(OP_GLOBAL)
   };

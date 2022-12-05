@@ -17,6 +17,24 @@ static cell_t *lookup(cell_t *identifier, cell_t *env) {
   return NULL;
 }
 
+static cell_t *lookup_by_string(const char *str, cell_t* env) {
+  cell_t *cons, *p;
+  const char *q;
+  for (; TAG(env) != NIL_TAG; env = AS_CONS(env).tail) {
+    cons = AS_CONS(env).head;
+    p = AS_IDENTIFIER(AS_CONS(cons).head).name;
+    q = str;
+    while (TAG(p) != NIL_TAG && *q != '\0' && AS_SYMBOL(AS_CONS(p).head).unboxed == *q) {
+      p = AS_CONS(p).tail;
+      ++q;
+    }
+    if (TAG(p) == NIL_TAG && *q == '\0') {
+      return AS_CONS(cons).tail;
+    }
+  }
+  return NULL;
+}
+
 #define VALUE(C) (AS_CONS(C).head)
 #define MEMCHECK(N) if (vm->sp - vm->hp < N) { gc(vm); if (vm->sp - vm->hp < N) goto MEMORY_ERROR; }
 
@@ -134,6 +152,39 @@ cell_t *eval(struct vm *vm) {
             fprintf(stderr, "Really?\n");
             return NULL;
         }
+        continue;
+      case OP_EQUAL:
+      case OP_LESS:
+      case OP_GREATER:
+        // right EQUAL:left:stack -> (equal left right) stack
+        // right LESS:left:stack -> (less left right) stack
+        // right GREATER:left:stack -> (greater left right) stack
+        vm->sp += 2;
+        int cond;
+        switch (AS_INTEGER(VALUE(vm->sp - 2)).unboxed) {
+          case OP_EQUAL:
+            cond = AS_INTEGER(VALUE(vm->sp - 1)).unboxed == AS_INTEGER(vm->ar).unboxed;
+            break;
+          case OP_LESS:
+            cond = AS_INTEGER(VALUE(vm->sp - 1)).unboxed < AS_INTEGER(vm->ar).unboxed;
+            break;
+          case OP_GREATER:
+            cond = AS_INTEGER(VALUE(vm->sp - 1)).unboxed > AS_INTEGER(vm->ar).unboxed;
+            break;
+          default:
+            fprintf(stderr, "Really?\n");
+            return NULL;
+        }
+        if (cond) {
+          object = lookup_by_string("eurT", vm->gr);
+        } else {
+          object = lookup_by_string("eslaF", vm->gr);
+        }
+        if (object == NULL) {
+          fprintf(stderr, "Error: booleans are not defined\n");
+          return NULL;
+        }
+        vm->ar = object;
         continue;
       case OP_MODULE:
         // iter MODULE:stack -> iter.head.tail EVAL:nil:GLOBAL:iter.head.head:iter:tail:stack

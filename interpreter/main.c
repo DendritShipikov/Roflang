@@ -22,6 +22,9 @@ int tokenize(struct vm *vm, struct lexer *lex) {
     case '*':
     case '+':
     case '-':
+    case '=':
+    case '<':
+    case '>':
     case '.':
     case ':':
     case ';':
@@ -57,6 +60,7 @@ int tokenize(struct vm *vm, struct lexer *lex) {
 cell_t *parse_stms(struct vm *vm, struct lexer *lex);
 cell_t *parse_stmt(struct vm *vm, struct lexer *lex);
 cell_t *parse_expr(struct vm *vm, struct lexer *lex);
+cell_t *parse_comp(struct vm *vm, struct lexer *lex);
 cell_t *parse_sumb(struct vm *vm, struct lexer *lex);
 cell_t *parse_prod(struct vm *vm, struct lexer *lex);
 cell_t *parse_appl(struct vm *vm, struct lexer *lex);
@@ -99,7 +103,7 @@ cell_t *parse_stmt(struct vm *vm, struct lexer *lex) {
 
 cell_t *parse_expr(struct vm *vm, struct lexer *lex) {
   if (lex->kind != '\\') {
-    return parse_sumb(vm, lex);
+    return parse_comp(vm, lex);
   }
   tokenize(vm, lex);
   if (lex->kind != 'a') {
@@ -118,6 +122,30 @@ cell_t *parse_expr(struct vm *vm, struct lexer *lex) {
   if (vm->sp - vm->hp < 2) { fprintf(stderr, "Error: memory is out\n"); return NULL; }
   cell_t *lambda = new_lambda(vm, new_identifier(vm, name), body);
   return lambda;
+}
+
+cell_t *parse_comp(struct vm *vm, struct lexer *lex) {
+  cell_t *left = parse_sumb(vm, lex);
+  if (left == NULL) return NULL;
+  int op;
+  switch (lex->kind) {
+    case '=':
+      op = OP_EQUAL;
+      break;
+    case '>':
+      op = OP_LESS;
+      break;
+    case '<':
+      op = OP_GREATER;
+      break;
+    default:
+      return left;
+  }
+  tokenize(vm, lex);
+  cell_t *right = parse_sumb(vm, lex);
+  if (right == NULL) return NULL;
+  if (vm->sp - vm->hp < 1) { fprintf(stderr, "Error: memory is out\n"); return NULL; }
+  return new_binop(vm, left, right, op);
 }
 
 cell_t *parse_sumb(struct vm *vm, struct lexer *lex) {
@@ -275,6 +303,15 @@ void print_ast(cell_t *cell) {
           break;
         case OP_MUL:
           printf(" * ");
+          break;
+        case OP_EQUAL:
+          printf(" = ");
+          break;
+        case OP_LESS:
+          printf(" < ");
+          break;
+        case OP_GREATER:
+          printf(" > ");
           break;
       }
       print_ast(cell->data.binop.right);
