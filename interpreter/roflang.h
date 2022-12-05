@@ -110,6 +110,7 @@ void gc(struct vm *vm);
 
 /* constructors without memory checks */
 cell_t *new_nil();
+cell_t *new_opcode(int op);
 cell_t *new_integer(struct vm *vm, int unboxed);
 cell_t *new_symbol(struct vm *vm, char unboxed);
 cell_t *new_cons(struct vm *vm, cell_t *head, cell_t *tail);

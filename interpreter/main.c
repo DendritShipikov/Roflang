@@ -303,7 +303,7 @@ int main() {
   printf("\n");
   // cell MODULE:nil
   vm.sp -= 1;
-  VALUE(vm.sp + 0) = &opcodes[OP_MODULE];
+  VALUE(vm.sp + 0) = new_opcode(OP_MODULE);
   vm.ar = cell;
   vm.gr = new_nil();
   printf("RUN...\n");

@@ -1,20 +1,5 @@
 #include "roflang.h"
 
-#define OPCODE(OP) { .data = { .integer = {OP} }, .forward = NULL, .tag = INTEGER_TAG, .ind = 0 }
-
-cell_t opcodes[] = {
-  [OP_HALT] = OPCODE(OP_HALT),
-  [OP_EVAL] = OPCODE(OP_EVAL),
-  [OP_EVALFUNC] = OPCODE(OP_EVALFUNC),
-  [OP_APPLY] = OPCODE(OP_APPLY),
-  [OP_BINOP] = OPCODE(OP_BINOP),
-  [OP_ADD] = OPCODE(OP_ADD),
-  [OP_SUB] = OPCODE(OP_SUB),
-  [OP_MUL] = OPCODE(OP_MUL),
-  [OP_MODULE] = OPCODE(OP_MODULE),
-  [OP_GLOBAL] = OPCODE(OP_GLOBAL)
-};
-
 static cell_t *lookup(cell_t *identifier, cell_t *env) {
   cell_t *cons, *p, *q;
   for (; TAG(env) != NIL_TAG; env = AS_CONS(env).tail) {
@@ -72,9 +57,9 @@ cell_t *eval(struct vm *vm) {
             // application EVAL:env:stack -> application.argument EVAL:env:EVALFUNC:application.function:env:stack
             MEMCHECK(3);
             vm->sp -= 3;
-            VALUE(vm->sp + 0) = &opcodes[OP_EVAL];
+            VALUE(vm->sp + 0) = new_opcode(OP_EVAL);
             VALUE(vm->sp + 1) = VALUE(vm->sp + 4);
-            VALUE(vm->sp + 2) = &opcodes[OP_EVALFUNC];
+            VALUE(vm->sp + 2) = new_opcode(OP_EVALFUNC);
             VALUE(vm->sp + 3) = AS_APPLICATION(vm->ar).function;
             vm->ar = AS_APPLICATION(vm->ar).argument;
             continue;
@@ -82,11 +67,11 @@ cell_t *eval(struct vm *vm) {
             // binop EVAL:env:stack -> binop.left EVAL:env:BINOP:binop.right:OP[binop.ind]:env:stack
             MEMCHECK(4);
             vm->sp -= 4;
-            VALUE(vm->sp + 0) = &opcodes[OP_EVAL];
+            VALUE(vm->sp + 0) = new_opcode(OP_EVAL);
             VALUE(vm->sp + 1) = VALUE(vm->sp + 5);
-            VALUE(vm->sp + 2) = &opcodes[OP_BINOP];
+            VALUE(vm->sp + 2) = new_opcode(OP_BINOP);
             VALUE(vm->sp + 3) = AS_BINOP(vm->ar).right;
-            VALUE(vm->sp + 4) = &opcodes[IND(vm->ar)]; // todo translate
+            VALUE(vm->sp + 4) = new_opcode(IND(vm->ar)); // todo translate
             vm->ar = AS_BINOP(vm->ar).left;
             continue;
           default:
@@ -97,11 +82,11 @@ cell_t *eval(struct vm *vm) {
         // object EVALFUNC:function:env:stack -> function EVAL:env:APPLY:object:stack
         MEMCHECK(1);
         vm->sp -= 1;
-        VALUE(vm->sp + 0) = &opcodes[OP_EVAL];
+        VALUE(vm->sp + 0) = new_opcode(OP_EVAL);
         VALUE(vm->sp + 1) = VALUE(vm->sp + 3);
         VALUE(vm->sp + 3) = vm->ar;
         vm->ar = VALUE(vm->sp + 2);
-        VALUE(vm->sp + 2) = &opcodes[OP_APPLY];
+        VALUE(vm->sp + 2) = new_opcode(OP_APPLY);
         continue;
       case OP_APPLY:
         // closure APPLY:object:stack -> closure.lambda.body EVAL:((closure.lambda.param:object):closure.env):stack
@@ -112,13 +97,13 @@ cell_t *eval(struct vm *vm) {
         }
         cons = new_cons(vm, AS_LAMBDA(AS_CLOSURE(vm->ar).lambda).param, VALUE(vm->sp + 1));
         env = new_cons(vm, cons, AS_CLOSURE(vm->ar).env);
-        VALUE(vm->sp + 0) = &opcodes[OP_EVAL];
+        VALUE(vm->sp + 0) = new_opcode(OP_EVAL);
         VALUE(vm->sp + 1) = env;
         vm->ar = AS_LAMBDA(AS_CLOSURE(vm->ar).lambda).body;
         continue;
       case OP_BINOP:
         // left BINOP:binop.right:OP[binop.ind]:env:stack -> binop.right EVAL:env:OP[binop.ind]:left:stack
-        VALUE(vm->sp + 0) = &opcodes[OP_EVAL];
+        VALUE(vm->sp + 0) = new_opcode(OP_EVAL);
         right = VALUE(vm->sp + 1);
         VALUE(vm->sp + 1) = VALUE(vm->sp + 3);
         VALUE(vm->sp + 3) = vm->ar;
@@ -159,9 +144,9 @@ cell_t *eval(struct vm *vm) {
         MEMCHECK(4);
         vm->sp -= 4;
         cons = AS_CONS(vm->ar).head;
-        VALUE(vm->sp + 0) = &opcodes[OP_EVAL];
+        VALUE(vm->sp + 0) = new_opcode(OP_EVAL);
         VALUE(vm->sp + 1) = new_nil();
-        VALUE(vm->sp + 2) = &opcodes[OP_GLOBAL];
+        VALUE(vm->sp + 2) = new_opcode(OP_GLOBAL);
         VALUE(vm->sp + 3) = AS_CONS(cons).head;
         VALUE(vm->sp + 4) = AS_CONS(vm->ar).tail;
         vm->ar = AS_CONS(cons).tail;
@@ -173,7 +158,7 @@ cell_t *eval(struct vm *vm) {
         vm->sp += 1;
         vm->gr = new_cons(vm, cons, vm->gr);
         vm->ar = VALUE(vm->sp + 0);
-        VALUE(vm->sp + 0) = &opcodes[OP_MODULE];
+        VALUE(vm->sp + 0) = new_opcode(OP_MODULE);
         continue;
       default:
         fprintf(stderr, "Error: wrong op\n");
@@ -183,89 +168,4 @@ cell_t *eval(struct vm *vm) {
 MEMORY_ERROR:
   fprintf(stderr, "Error: memory is out\n");
   return NULL;
-}
-
-/* constructors */
-
-cell_t *new_nil() {
-  static cell_t nil = { .data = { .integer = {0} }, .forward = NULL, .tag = NIL_TAG, .ind = 0 };
-  return &nil;
-}
-
-cell_t *new_integer(struct vm *vm, int unboxed) {
-  cell_t *cell = vm->hp++;
-  FORWARD(cell) = NULL;
-  TAG(cell) = INTEGER_TAG;
-  cell->data.integer.unboxed = unboxed;
-  return cell;
-}
-
-cell_t *new_symbol(struct vm *vm, char unboxed) {
-  cell_t *cell = vm->hp++;
-  FORWARD(cell) = NULL;
-  TAG(cell) = SYMBOL_TAG;
-  cell->data.symbol.unboxed = unboxed;
-  return cell;
-}
-
-cell_t *new_cons(struct vm *vm, cell_t *head, cell_t *tail) {
-  cell_t *cell = vm->hp++;
-  FORWARD(cell) = NULL;
-  TAG(cell) = CONS_TAG;
-  cell->data.cons.head = head;
-  cell->data.cons.tail = tail;
-  return cell;
-}
-
-cell_t *new_closure(struct vm *vm, cell_t *lambda, cell_t *env) {
-  cell_t *cell = vm->hp++;
-  FORWARD(cell) = NULL;
-  TAG(cell) = CLOSURE_TAG;
-  cell->data.closure.lambda = lambda;
-  cell->data.closure.env = env;
-  return cell;
-}
-
-cell_t *new_literal(struct vm *vm, cell_t *object) {
-  cell_t *cell = vm->hp++;
-  FORWARD(cell) = NULL;
-  TAG(cell) = LITERAL_TAG;
-  cell->data.literal.object = object;
-  return cell;
-}
-
-cell_t *new_identifier(struct vm *vm, cell_t *name) {
-  cell_t *cell = vm->hp++;
-  FORWARD(cell) = NULL;
-  TAG(cell) = IDENTIFIER_TAG;
-  cell->data.identifier.name = name;
-  return cell;
-}
-
-cell_t *new_lambda(struct vm *vm, cell_t *param, cell_t *body) {
-  cell_t *cell = vm->hp++;
-  FORWARD(cell) = NULL;
-  TAG(cell) = LAMBDA_TAG;
-  cell->data.lambda.param = param;
-  cell->data.lambda.body = body;
-  return cell;
-}
-
-cell_t *new_application(struct vm *vm, cell_t *function, cell_t *argument) {
-  cell_t *cell = vm->hp++;
-  FORWARD(cell) = NULL;
-  TAG(cell) = APPLICATION_TAG;
-  cell->data.application.function = function;
-  cell->data.application.argument = argument;
-  return cell;
-}
-
-cell_t *new_binop(struct vm *vm, cell_t *left, cell_t *right, char kind) {
-  cell_t *cell = vm->hp++;
-  FORWARD(cell) = NULL;
-  TAG(cell) = BINOP_TAG;
-  IND(cell) = kind;
-  cell->data.binop.left = left;
-  cell->data.binop.right = right;
-  return cell;
 }
