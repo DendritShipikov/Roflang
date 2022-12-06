@@ -132,10 +132,10 @@ cell_t *parse_comp(struct vm *vm, struct lexer *lex) {
     case '=':
       op = OP_EQUAL;
       break;
-    case '>':
+    case '<':
       op = OP_LESS;
       break;
-    case '<':
+    case '>':
       op = OP_GREATER;
       break;
     default:
