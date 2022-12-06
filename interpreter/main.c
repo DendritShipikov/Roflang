@@ -25,6 +25,7 @@ int tokenize(struct vm *vm, struct lexer *lex) {
     case '=':
     case '<':
     case '>':
+    case '?':
     case '.':
     case ':':
     case ';':
@@ -137,6 +138,9 @@ cell_t *parse_comp(struct vm *vm, struct lexer *lex) {
       break;
     case '>':
       op = OP_GREATER;
+      break;
+    case '?':
+      op = OP_COMPARE;
       break;
     default:
       return left;
@@ -312,6 +316,9 @@ void print_ast(cell_t *cell) {
           break;
         case OP_GREATER:
           printf(" > ");
+          break;
+        case OP_COMPARE:
+          printf(" ? ");
           break;
       }
       print_ast(cell->data.binop.right);

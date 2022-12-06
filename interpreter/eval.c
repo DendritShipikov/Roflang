@@ -40,6 +40,7 @@ static cell_t *lookup_by_string(const char *str, cell_t* env) {
 
 cell_t *eval(struct vm *vm) {
   cell_t *object, *env, *cons, *right;
+  int cond, a, b;
   for (;;) {
     switch (AS_INTEGER(VALUE(vm->sp + 0)).unboxed) {
       case OP_HALT:
@@ -159,8 +160,11 @@ cell_t *eval(struct vm *vm) {
         // right EQUAL:left:stack -> (equal left right) stack
         // right LESS:left:stack -> (less left right) stack
         // right GREATER:left:stack -> (greater left right) stack
+        if (TAG(vm->ar) != INTEGER_TAG || TAG(VALUE(vm->sp + 1)) != INTEGER_TAG) {
+          fprintf(stderr, "Error: operands of binop should be integers\n");
+          return NULL;
+        }
         vm->sp += 2;
-        int cond;
         switch (AS_INTEGER(VALUE(vm->sp - 2)).unboxed) {
           case OP_EQUAL:
             cond = AS_INTEGER(VALUE(vm->sp - 1)).unboxed == AS_INTEGER(vm->ar).unboxed;
@@ -182,6 +186,28 @@ cell_t *eval(struct vm *vm) {
         }
         if (object == NULL) {
           fprintf(stderr, "Error: booleans are not defined\n");
+          return NULL;
+        }
+        vm->ar = object;
+        continue;
+      case OP_COMPARE:
+        // right COMPARE:left:stack -> (compare left right) stack
+        if (TAG(vm->ar) != INTEGER_TAG || TAG(VALUE(vm->sp + 1)) != INTEGER_TAG) {
+          fprintf(stderr, "Error: operands of binop should be integers\n");
+          return NULL;
+        }
+        vm->sp += 2;
+        a = AS_INTEGER(VALUE(vm->sp - 1)).unboxed;
+        b = AS_INTEGER(vm->ar).unboxed;
+        if (a < b) {
+          object = lookup_by_string("TL", vm->gr);
+        } else if (a > b) {
+          object = lookup_by_string("TG", vm->gr);
+        } else {
+          object = lookup_by_string("QE", vm->gr);
+        }
+        if (object == NULL) {
+          fprintf(stderr, "Error: ords are not defined\n");
           return NULL;
         }
         vm->ar = object;

@@ -101,6 +101,7 @@ enum {
   OP_MUL,
   OP_EQUAL,
   OP_LESS,
+  OP_COMPARE,
   OP_GREATER,
   OP_MODULE,
   OP_GLOBAL
