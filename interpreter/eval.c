@@ -131,24 +131,44 @@ cell_t *eval(struct vm *vm) {
       case OP_ADD:
       case OP_SUB:
       case OP_MUL:
+      case OP_DIV:
+      case OP_MOD:
         // right ADD:left:stack -> (add left right) stack
         // right SUB:left:stack -> (sub left right) stack
         // right MUL:left:stack -> (mul left right) stack
+        // right DIV:left:stack -> (div left right) stack
+        // right MOD:left:stack -> (mod left right) stack
         if (TAG(vm->ar) != INTEGER_TAG || TAG(VALUE(vm->sp + 1)) != INTEGER_TAG) {
           fprintf(stderr, "Error: operands of binop should be integers\n");
           return NULL;
         }
+        a = AS_INTEGER(VALUE(vm->sp + 1)).unboxed;
+        b = AS_INTEGER(vm->ar).unboxed;
         vm->sp += 2;
         switch (AS_INTEGER(VALUE(vm->sp - 2)).unboxed) {
           case OP_ADD:
-            vm->ar = new_integer(vm, AS_INTEGER(VALUE(vm->sp - 1)).unboxed + AS_INTEGER(vm->ar).unboxed);
-            continue;
+            vm->ar = new_integer(vm, a + b);
+            break;
           case OP_SUB:
-            vm->ar = new_integer(vm, AS_INTEGER(VALUE(vm->sp - 1)).unboxed - AS_INTEGER(vm->ar).unboxed);
-            continue;
+            vm->ar = new_integer(vm, a - b);
+            break;
           case OP_MUL:
-            vm->ar = new_integer(vm, AS_INTEGER(VALUE(vm->sp - 1)).unboxed * AS_INTEGER(vm->ar).unboxed);
-            continue;
+            vm->ar = new_integer(vm, a * b);
+            break;
+          case OP_DIV:
+            if (b == 0) {
+              fprintf(stderr, "Error: division by zero\n");
+              return NULL;
+            }
+            vm->ar = new_integer(vm, a / b);
+            break;
+          case OP_MOD:
+            if (b == 0) {
+              fprintf(stderr, "Error: division by zero\n");
+              return NULL;
+            }
+            vm->ar = new_integer(vm, a % b);
+            break;
           default:
             fprintf(stderr, "Really?\n");
             return NULL;
@@ -164,16 +184,18 @@ cell_t *eval(struct vm *vm) {
           fprintf(stderr, "Error: operands of binop should be integers\n");
           return NULL;
         }
+        a = AS_INTEGER(VALUE(vm->sp + 1)).unboxed;
+        b = AS_INTEGER(vm->ar).unboxed;
         vm->sp += 2;
         switch (AS_INTEGER(VALUE(vm->sp - 2)).unboxed) {
           case OP_EQUAL:
-            cond = AS_INTEGER(VALUE(vm->sp - 1)).unboxed == AS_INTEGER(vm->ar).unboxed;
+            cond = a == b;
             break;
           case OP_LESS:
-            cond = AS_INTEGER(VALUE(vm->sp - 1)).unboxed < AS_INTEGER(vm->ar).unboxed;
+            cond = a < b;
             break;
           case OP_GREATER:
-            cond = AS_INTEGER(VALUE(vm->sp - 1)).unboxed > AS_INTEGER(vm->ar).unboxed;
+            cond = a > b;
             break;
           default:
             fprintf(stderr, "Really?\n");

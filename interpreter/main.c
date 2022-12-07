@@ -20,6 +20,8 @@ int tokenize(struct vm *vm, struct lexer *lex) {
     case '(':
     case ')':
     case '*':
+    case '/':
+    case '%':
     case '+':
     case '-':
     case '=':
@@ -169,12 +171,13 @@ cell_t *parse_sumb(struct vm *vm, struct lexer *lex) {
 cell_t *parse_prod(struct vm *vm, struct lexer *lex) {
   cell_t *prod = parse_appl(vm, lex);
   if (prod == NULL) return NULL;
-  while (lex->kind == '*') {
+  while (lex->kind == '*' || lex->kind == '/' || lex->kind == '%') {
+    char kind = lex->kind == '*' ? OP_MUL : lex->kind == '/' ? OP_DIV : OP_MOD;
     tokenize(vm, lex);
     cell_t *appl = parse_appl(vm, lex);
     if (appl == NULL) return NULL;
     if (vm->sp - vm->hp < 1) { fprintf(stderr, "Error: memory is out\n"); return NULL; }
-    prod = new_binop(vm, prod, appl, OP_MUL);
+    prod = new_binop(vm, prod, appl, kind);
   }
   return prod;
 }
@@ -307,6 +310,12 @@ void print_ast(cell_t *cell) {
           break;
         case OP_MUL:
           printf(" * ");
+          break;
+        case OP_DIV:
+          printf(" / ");
+          break;
+        case OP_MOD:
+          printf(" %% ");
           break;
         case OP_EQUAL:
           printf(" = ");
