@@ -1,8 +1,6 @@
 #ifndef ROFLANG_H
 #define ROFLANG_H
 
-/* CELL */
-
 enum {
   TAG_NIL,
   TAG_PAIR,
@@ -99,8 +97,6 @@ void make_hole(cell_t *p);
 void make_frame(cell_t *p, unsigned int op, cell_t *r1, cell_t *r2, cell_t *bfp);
 
 
-/* INTERPRETER */
-
 struct context {
   cell_t *bp, *hp, *sp, *fp, *ep;
 };
@@ -113,5 +109,17 @@ enum {
 };
 
 cell_t *run(struct context *ctx);
+
+
+struct parser {
+  const char *cur;
+  cell_t *top;
+};
+
+cell_t *parse_prog(struct parser *p);
+cell_t *parse_expr(struct parser *p);
+cell_t *parse_term(struct parser *p);
+cell_t *parse_item(struct parser *p);
+
 
 #endif
