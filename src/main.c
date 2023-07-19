@@ -25,8 +25,10 @@ int main(int argc, char **argv) {
     .fp = ep - 1,
     .ep = ep,
   };
+  cell_t expr = {0};
+  make_symex(&expr, AS_PAIR(AS_PAIR(env).head).head);
   ctx.fp->frame.op = OP_EVAL;
-  ctx.fp->frame.r1 = AS_PAIR(AS_PAIR(env).head).head;
+  ctx.fp->frame.r1 = &expr;
   ctx.fp->frame.r2 = env;
   ctx.fp->frame.bfp = NULL;
   cell_t *obj = run(&ctx);

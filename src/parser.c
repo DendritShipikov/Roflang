@@ -14,6 +14,38 @@ static char tokenize(struct parser *p) {
   return *p->cur;
 }
 
+static cell_t *parse_name(struct parser *p) {
+  static cell_t nil = { .object = { .tag = TAG_NIL } };
+  cell_t *name = &nil;
+  cell_t *top = p->top;
+  while (is_alpha(*p->cur)) {
+    // todo memcheck 2
+    cell_t *pair = p->top++;
+    cell_t *ch = p->top++;
+    make_integer(ch, *p->cur++);
+    make_pair(pair, ch, name);
+    name = pair;
+  }
+  static cell_t *names = NULL;
+  for (cell_t *iter = names; iter != NULL; iter = FORWARD(iter)) {
+    cell_t *x = name, *y = iter;
+    while (IS_PAIR(x) && IS_PAIR(y)) {
+      if (AS_INTEGER(AS_PAIR(y).head).unboxed != AS_INTEGER(AS_PAIR(x).head).unboxed) {
+        break;
+      }
+      x = AS_PAIR(x).tail;
+      y = AS_PAIR(y).tail;
+    }
+    if (!IS_PAIR(x) && !IS_PAIR(y)) {
+      p->top = top;
+      return iter;
+    }
+  }
+  FORWARD(name) = names;
+  names = name;
+  return name;
+}
+
 cell_t *parse_defs(struct parser *p) {
   static cell_t nil = { .object = { .tag = TAG_NIL } };
   cell_t *env = &nil;
@@ -26,13 +58,10 @@ cell_t *parse_defs(struct parser *p) {
       fprintf(stderr, "Error: name expected\n");
       return NULL;
     }
-    // todo memcheck 4
-    cell_t *name = p->top++;
-    cell_t *pair = p->top++;
-    cell_t *obj = p->top++;
-    cell_t *tmp = p->top++;
-    make_symex(name, c);
-    ++p->cur;
+    cell_t *name = parse_name(p);
+    if (name == NULL) {
+      return NULL;
+    }
     c = tokenize(p);
     if (c != '=') {
       fprintf(stderr, "Error: '=' expected\n");
@@ -49,6 +78,10 @@ cell_t *parse_defs(struct parser *p) {
       return NULL;
     }
     ++p->cur;
+    // todo memcheck 3
+    cell_t *pair = p->top++;
+    cell_t *obj = p->top++;
+    cell_t *tmp = p->top++;
     if (IS_LAMEX(expr)) {
       make_closure(obj, expr, NULL);
     } else {
@@ -79,8 +112,10 @@ cell_t *parse_expr(struct parser *p) {
     fprintf(stderr, "Error: param expected\n");
     return NULL;
   }
-  char name = c;
-  ++p->cur;
+  cell_t *param = parse_name(p);
+  if (param == NULL) {
+    return NULL;
+  }
   c = tokenize(p);
   if (c != '.') {
     fprintf(stderr, "Error: '.' expected\n");
@@ -91,10 +126,8 @@ cell_t *parse_expr(struct parser *p) {
   if (body == NULL) {
     return NULL;
   }
-  // todo memcheck 2
-  cell_t *param = p->top++;
+  // todo memcheck 1
   cell_t *expr = p->top++;
-  make_symex(param, name);
   make_lamex(expr, param, body);
   return expr;
 }
@@ -122,8 +155,9 @@ cell_t *parse_term(struct parser *p) {
 }
 
 cell_t *parse_item(struct parser *p) {
-  char c = *p->cur++;
+  char c = *p->cur;
   if (c == '(') {
+    ++p->cur;
     cell_t *item = parse_expr(p);
     if (item == NULL) {
       return NULL;
@@ -139,7 +173,11 @@ cell_t *parse_item(struct parser *p) {
   if (is_alpha(c)) {
     // todo memcheck 1
     cell_t *item = p->top++;
-    make_symex(item, c);
+    cell_t *name = parse_name(p);
+    if (name == NULL) {
+      return NULL;
+    }
+    make_symex(item, name);
     return item;
   }
   if (is_digit(c)) {
@@ -148,6 +186,7 @@ cell_t *parse_item(struct parser *p) {
     cell_t *obj = p->top++;
     make_integer(obj, c - '0');
     make_litex(item, obj);
+    ++p->cur;
     return item;
   }
   fprintf(stderr, "Error: wrong item\n");

@@ -37,7 +37,7 @@ typedef union cell {
         union cell *body;
       } lamex;
       struct {
-        char name;
+        union cell *name;
       } symex;
       struct {
         union cell *object;
@@ -62,6 +62,7 @@ typedef union cell {
 } cell_t;
 
 #define TAG(C) ((C)->object.tag)
+#define FORWARD(C) ((C)->object.forward)
 
 #define AS_PAIR(C)     ((C)->object.payload.pair)
 #define AS_CLOSURE(C)  ((C)->object.payload.closure)
@@ -90,7 +91,7 @@ void make_indirect(cell_t *p, cell_t *actual);
 void make_integer(cell_t *p, int unboxed);
 void make_appex(cell_t *p, cell_t *fun, cell_t *arg);
 void make_lamex(cell_t *p, cell_t *param, cell_t *body);
-void make_symex(cell_t *p, char name);
+void make_symex(cell_t *p, cell_t *name);
 void make_litex(cell_t *p, cell_t *object);
 void make_hole(cell_t *p);
 

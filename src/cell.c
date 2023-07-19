@@ -40,7 +40,7 @@ void make_lamex(cell_t *p, cell_t *param, cell_t *body) {
   AS_LAMEX(p).body = body;
 }
 
-void make_symex(cell_t *p, char name) {
+void make_symex(cell_t *p, cell_t *name) {
   TAG(p) = TAG_SYMEX;
   AS_SYMEX(p).name = name;
 }

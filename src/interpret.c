@@ -15,8 +15,7 @@ static void ensure_space(struct context *ctx, int count);
 #define PUSH(C) ((--ctx->sp)->ref.value = (C))
 
 cell_t *run(struct context *ctx) {
-  cell_t *expr, *obj, *env, *pair;
-  char name;
+  cell_t *expr, *obj, *env, *pair, *name;
   for (;;) {
     /* maybe i should save ctx->fp in local variable here (i can do this since ctx->fp is not moved by gc) */
     switch (OP) {
@@ -60,13 +59,13 @@ cell_t *run(struct context *ctx) {
             name = AS_SYMEX(expr).name;
             for (env = R2; IS_PAIR(env); env = AS_PAIR(env).tail) {
               pair = AS_PAIR(env).head;
-              if (AS_SYMEX(AS_PAIR(pair).head).name == name) {
+              if (AS_PAIR(pair).head == name) {
                 obj = AS_PAIR(pair).tail;
                 break;
               }
             }
             if (!IS_PAIR(env)) {
-              fprintf(stderr, "Fatal error: unbounded name '%c'\n", name);
+              fprintf(stderr, "Fatal error: unbounded name\n");
               exit(1);
             }
             break;
