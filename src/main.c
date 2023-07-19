@@ -13,7 +13,7 @@ int main(int argc, char **argv) {
     .cur = argv[1],
     .top = bp,
   };
-  cell_t *env = parse_prog(&p);
+  cell_t *env = parse_defs(&p);
   if (env == NULL) {
     return 0;
   }

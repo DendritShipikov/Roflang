@@ -116,7 +116,7 @@ struct parser {
   cell_t *top;
 };
 
-cell_t *parse_prog(struct parser *p);
+cell_t *parse_defs(struct parser *p);
 cell_t *parse_expr(struct parser *p);
 cell_t *parse_term(struct parser *p);
 cell_t *parse_item(struct parser *p);

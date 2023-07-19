@@ -3,15 +3,26 @@
 
 #include "roflang.h"
 
-cell_t *parse_prog(struct parser *p) {
+static int is_space(int c) { return c == ' ' || c == '\t' || c == '\r' || c == '\n'; }
+static int is_alpha(int c) { return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'); }
+static int is_digit(int c) { return '0' <= c && c <= '9'; }
+
+static char tokenize(struct parser *p) {
+  while (is_space(*p->cur)) {
+    ++p->cur;
+  }
+  return *p->cur;
+}
+
+cell_t *parse_defs(struct parser *p) {
   static cell_t nil = { .object = { .tag = TAG_NIL } };
   cell_t *env = &nil;
   for (;;) {
-    char c = *p->cur++;
+    char c = tokenize(p);
     if (c == '\0') {
       break;
     }
-    if (('a' > c || c > 'z') && ('A' > c || c > 'Z')) {
+    if (!is_alpha(c)) {
       fprintf(stderr, "Error: name expected\n");
       return NULL;
     }
@@ -21,20 +32,23 @@ cell_t *parse_prog(struct parser *p) {
     cell_t *obj = p->top++;
     cell_t *tmp = p->top++;
     make_symex(name, c);
-    c = *p->cur++;
+    ++p->cur;
+    c = tokenize(p);
     if (c != '=') {
       fprintf(stderr, "Error: '=' expected\n");
       return NULL;
     }
+    ++p->cur;
     cell_t *expr = parse_expr(p);
     if (expr == NULL) {
       return NULL;
     }
-    c = *p->cur++;
+    c = tokenize(p);
     if (c != ';') {
       fprintf(stderr, "Error: ';' expected\n");
       return NULL;
     }
+    ++p->cur;
     if (IS_LAMEX(expr)) {
       make_closure(obj, expr, NULL);
     } else {
@@ -56,17 +70,18 @@ cell_t *parse_prog(struct parser *p) {
 }
 
 cell_t *parse_expr(struct parser *p) {
-  char c = *p->cur;
+  char c = tokenize(p);
   if (c != '@') {
     return parse_term(p);
   }
   c = *++p->cur;
-  if (('a' > c || c > 'z') && ('A' > c || c > 'Z')) {
+  if (!is_alpha(c)) {
     fprintf(stderr, "Error: param expected\n");
     return NULL;
   }
   char name = c;
-  c = *++p->cur;
+  ++p->cur;
+  c = tokenize(p);
   if (c != '.') {
     fprintf(stderr, "Error: '.' expected\n");
     return NULL;
@@ -85,13 +100,14 @@ cell_t *parse_expr(struct parser *p) {
 }
 
 cell_t *parse_term(struct parser *p) {
+  tokenize(p);
   cell_t *term = parse_item(p);
   if (term == NULL) {
     return NULL;
   }
   for (;;) {
-    char c = *p->cur;
-    if (('a' > c || c > 'z') && ('A' > c || c > 'Z') && c != '(' && ('0' > c || c > '9')) {
+    char c = tokenize(p);
+    if (!is_alpha(c) && c != '(' && !is_digit(c)) {
       return term;
     }
     cell_t *item = parse_item(p);
@@ -112,20 +128,21 @@ cell_t *parse_item(struct parser *p) {
     if (item == NULL) {
       return NULL;
     }
-    c = *p->cur++;
+    c = tokenize(p);
     if (c != ')') {
       fprintf(stderr, "Error: ')' expected\n");
       return NULL;
     }
+    ++p->cur;
     return item;
   }
-  if (('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')) {
+  if (is_alpha(c)) {
     // todo memcheck 1
     cell_t *item = p->top++;
     make_symex(item, c);
     return item;
   }
-  if ('0' <= c && c <= '9') {
+  if (is_digit(c)) {
     // todo memcheck 2
     cell_t *item = p->top++;
     cell_t *obj = p->top++;
