@@ -12,6 +12,7 @@ int main(int argc, char **argv) {
   struct parser p = {
     .cur = argv[1],
     .top = bp,
+    .names = NULL,
   };
   cell_t *env = parse_defs(&p);
   if (env == NULL) {

@@ -122,6 +122,7 @@ cell_t *run(struct context *ctx);
 struct parser {
   const char *cur;
   cell_t *top;
+  cell_t *names;
 };
 
 cell_t *parse_defs(struct parser *p);

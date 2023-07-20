@@ -26,8 +26,7 @@ static cell_t *parse_name(struct parser *p) {
     make_pair(pair, ch, name);
     name = pair;
   }
-  static cell_t *names = NULL;
-  for (cell_t *iter = names; iter != NULL; iter = FORWARD(iter)) {
+  for (cell_t *iter = p->names; iter != NULL; iter = FORWARD(iter)) {
     cell_t *x = name, *y = iter;
     while (IS_PAIR(x) && IS_PAIR(y)) {
       if (AS_SYMBOL(AS_PAIR(y).head).unboxed != AS_SYMBOL(AS_PAIR(x).head).unboxed) {
@@ -41,8 +40,8 @@ static cell_t *parse_name(struct parser *p) {
       return iter;
     }
   }
-  FORWARD(name) = names;
-  names = name;
+  FORWARD(name) = p->names;
+  p->names = name;
   return name;
 }
 
