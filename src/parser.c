@@ -177,7 +177,7 @@ cell_t *parse_item(struct parser *p) {
     if (name == NULL) {
       return NULL;
     }
-    make_symex(item, name);
+    make_varex(item, name);
     return item;
   }
   if (is_digit(c)) {

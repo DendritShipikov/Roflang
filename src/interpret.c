@@ -55,8 +55,8 @@ cell_t *run(struct context *ctx) {
             obj = NEW();
             make_closure(obj, expr, R2);
             break;
-          case TAG_SYMEX:
-            name = AS_SYMEX(expr).name;
+          case TAG_VAREX:
+            name = AS_VAREX(expr).name;
             for (env = R2; IS_PAIR(env); env = AS_PAIR(env).tail) {
               pair = AS_PAIR(env).head;
               if (AS_PAIR(pair).head == name) {

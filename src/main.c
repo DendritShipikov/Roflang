@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
     .ep = ep,
   };
   cell_t expr = {0};
-  make_symex(&expr, AS_PAIR(AS_PAIR(env).head).head);
+  make_varex(&expr, AS_PAIR(AS_PAIR(env).head).head);
   ctx.fp->frame.op = OP_EVAL;
   ctx.fp->frame.r1 = &expr;
   ctx.fp->frame.r2 = env;

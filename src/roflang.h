@@ -9,7 +9,7 @@ enum {
   TAG_INDIRECT,
   TAG_APPEX,
   TAG_LAMEX,
-  TAG_SYMEX,
+  TAG_VAREX,
   TAG_LITEX,
   TAG_INTEGER,
   TAG_HOLE,
@@ -38,7 +38,7 @@ typedef union cell {
       } lamex;
       struct {
         union cell *name;
-      } symex;
+      } varex;
       struct {
         union cell *object;
       } litex;
@@ -71,7 +71,7 @@ typedef union cell {
 #define AS_INTEGER(C)  ((C)->object.payload.integer)
 #define AS_APPEX(C)    ((C)->object.payload.appex)
 #define AS_LAMEX(C)    ((C)->object.payload.lamex)
-#define AS_SYMEX(C)    ((C)->object.payload.symex)
+#define AS_VAREX(C)    ((C)->object.payload.varex)
 #define AS_LITEX(C)    ((C)->object.payload.litex)
 
 #define IS_PAIR(C)     (TAG(C) == TAG_PAIR)
@@ -81,7 +81,7 @@ typedef union cell {
 #define IS_INTEGER(C)  (TAG(C) == TAG_INTEGER)
 #define IS_APPEX(C)    (TAG(C) == TAG_APPEX)
 #define IS_LAMEX(C)    (TAG(C) == TAG_LAMEX)
-#define IS_SYMEX(C)    (TAG(C) == TAG_SYMEX)
+#define IS_VAREX(C)    (TAG(C) == TAG_VAREX)
 #define IS_LITEX(C)    (TAG(C) == TAG_LITEX)
 
 void make_pair(cell_t *p, cell_t *head, cell_t *tail);
@@ -91,7 +91,7 @@ void make_indirect(cell_t *p, cell_t *actual);
 void make_integer(cell_t *p, int unboxed);
 void make_appex(cell_t *p, cell_t *fun, cell_t *arg);
 void make_lamex(cell_t *p, cell_t *param, cell_t *body);
-void make_symex(cell_t *p, cell_t *name);
+void make_varex(cell_t *p, cell_t *name);
 void make_litex(cell_t *p, cell_t *object);
 void make_hole(cell_t *p);
 
