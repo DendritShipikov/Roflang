@@ -12,6 +12,7 @@ enum {
   TAG_VAREX,
   TAG_LITEX,
   TAG_INTEGER,
+  TAG_SYMBOL,
   TAG_HOLE,
 };
 
@@ -48,6 +49,9 @@ typedef union cell {
       struct {
         int unboxed;
       } integer;
+      struct {
+        char unboxed;
+      } symbol;
     } payload;
   } object;
   struct {
@@ -69,6 +73,7 @@ typedef union cell {
 #define AS_THUNK(C)    ((C)->object.payload.thunk)
 #define AS_INDIRECT(C) ((C)->object.payload.indirect)
 #define AS_INTEGER(C)  ((C)->object.payload.integer)
+#define AS_SYMBOL(C)   ((C)->object.payload.symbol)
 #define AS_APPEX(C)    ((C)->object.payload.appex)
 #define AS_LAMEX(C)    ((C)->object.payload.lamex)
 #define AS_VAREX(C)    ((C)->object.payload.varex)
@@ -79,6 +84,7 @@ typedef union cell {
 #define IS_THUNK(C)    (TAG(C) == TAG_THUNK)
 #define IS_INDIRECT(C) (TAG(C) == TAG_INDIRECT)
 #define IS_INTEGER(C)  (TAG(C) == TAG_INTEGER)
+#define IS_SYMBOL(C)   (TAG(C) == TAG_SYMBOL)
 #define IS_APPEX(C)    (TAG(C) == TAG_APPEX)
 #define IS_LAMEX(C)    (TAG(C) == TAG_LAMEX)
 #define IS_VAREX(C)    (TAG(C) == TAG_VAREX)
@@ -89,6 +95,7 @@ void make_closure(cell_t *p, cell_t *expr, cell_t *env);
 void make_thunk(cell_t *p, cell_t *expr, cell_t *env);
 void make_indirect(cell_t *p, cell_t *actual);
 void make_integer(cell_t *p, int unboxed);
+void make_symbol(cell_t *p, char unboxed);
 void make_appex(cell_t *p, cell_t *fun, cell_t *arg);
 void make_lamex(cell_t *p, cell_t *param, cell_t *body);
 void make_varex(cell_t *p, cell_t *name);

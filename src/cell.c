@@ -28,6 +28,11 @@ void make_integer(cell_t *p, int unboxed) {
   AS_INTEGER(p).unboxed = unboxed;
 }
 
+void make_symbol(cell_t *p, char unboxed) {
+  TAG(p) = TAG_SYMBOL;
+  AS_SYMBOL(p).unboxed = unboxed;
+}
+
 void make_appex(cell_t *p, cell_t *fun, cell_t *arg) {
   TAG(p) = TAG_APPEX;
   AS_APPEX(p).fun = fun;

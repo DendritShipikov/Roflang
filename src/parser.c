@@ -22,7 +22,7 @@ static cell_t *parse_name(struct parser *p) {
     // todo memcheck 2
     cell_t *pair = p->top++;
     cell_t *ch = p->top++;
-    make_integer(ch, *p->cur++);
+    make_symbol(ch, *p->cur++);
     make_pair(pair, ch, name);
     name = pair;
   }
@@ -30,7 +30,7 @@ static cell_t *parse_name(struct parser *p) {
   for (cell_t *iter = names; iter != NULL; iter = FORWARD(iter)) {
     cell_t *x = name, *y = iter;
     while (IS_PAIR(x) && IS_PAIR(y)) {
-      if (AS_INTEGER(AS_PAIR(y).head).unboxed != AS_INTEGER(AS_PAIR(x).head).unboxed) {
+      if (AS_SYMBOL(AS_PAIR(y).head).unboxed != AS_SYMBOL(AS_PAIR(x).head).unboxed) {
         break;
       }
       x = AS_PAIR(x).tail;
