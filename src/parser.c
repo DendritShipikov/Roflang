@@ -21,9 +21,9 @@ static cell_t *parse_name(struct parser *p) {
   while (is_alpha(*p->cur)) {
     // todo memcheck 2
     cell_t *pair = p->top++;
-    cell_t *ch = p->top++;
-    make_symbol(ch, *p->cur++);
-    make_pair(pair, ch, name);
+    cell_t *sym = p->top++;
+    make_symbol(sym, *p->cur++);
+    make_pair(pair, sym, name);
     name = pair;
   }
   for (cell_t *iter = p->names; iter != NULL; iter = FORWARD(iter)) {
@@ -82,21 +82,13 @@ cell_t *parse_defs(struct parser *p) {
     cell_t *obj = p->top++;
     cell_t *tmp = p->top++;
     if (IS_LAMEX(expr)) {
-      make_closure(obj, expr, NULL);
+      make_closure(obj, expr, &nil);
     } else {
-      make_thunk(obj, expr, NULL);
+      make_thunk(obj, expr, &nil);
     }
     make_pair(pair, name, obj);
     make_pair(tmp, pair, env);
     env = tmp;
-  }
-  for (cell_t *iter = env; IS_PAIR(iter); iter = AS_PAIR(iter).tail) {
-    cell_t *obj = AS_PAIR(AS_PAIR(iter).head).tail;
-    if (IS_CLOSURE(obj)) {
-      AS_CLOSURE(obj).env = env;
-    } else {
-      AS_THUNK(obj).env = env;
-    }
   }
   return env;
 }

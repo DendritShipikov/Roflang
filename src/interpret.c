@@ -6,10 +6,10 @@
 static void ensure_space(struct context *ctx, int count);
 
 #define NEW()   (ctx->hp++)
-#define R1      (ctx->fp->frame.r1)
-#define R2      (ctx->fp->frame.r2)
-#define OP      (ctx->fp->frame.op)
-#define BFP     (ctx->fp->frame.bfp)
+#define R1      (ctx->bp->frame.r1)
+#define R2      (ctx->bp->frame.r2)
+#define OP      (ctx->bp->frame.op)
+#define BP      (ctx->bp->frame.bp)
 #define TOS()   ((ctx->sp)->ref.value)
 #define POP()   ((ctx->sp++)->ref.value)
 #define PUSH(C) ((--ctx->sp)->ref.value = (C))
@@ -24,7 +24,7 @@ cell_t *run(struct context *ctx) {
         expr = R1;
         switch (TAG(expr)) {
           case TAG_LAMEX:
-            if (ctx->sp == ctx->fp) {
+            if (ctx->sp == ctx->bp) {
               /* eval(@x.E, env, []) = cls{@x.E, env} */
               R1 = NEW();
               make_closure(R1, expr, R2);
@@ -64,11 +64,21 @@ cell_t *run(struct context *ctx) {
                 break;
               }
             }
-            if (!IS_PAIR(env)) {
-              fprintf(stderr, "Fatal error: unbounded name\n");
-              exit(1);
+            if (IS_PAIR(env)) {
+              break;
             }
-            break;
+            for (env = ctx->gp; IS_PAIR(env); env = AS_PAIR(env).tail) {
+              pair = AS_PAIR(env).head;
+              if (AS_PAIR(pair).head == name) {
+                obj = AS_PAIR(pair).tail;
+                break;
+              }
+            }
+            if (IS_PAIR(env)) {
+              break;
+            }
+            fprintf(stderr, "Fatal error: unbounded name\n");
+            exit(1);
           case TAG_LITEX:
             obj = AS_LITEX(expr).object;
             break;
@@ -107,7 +117,7 @@ cell_t *run(struct context *ctx) {
             R1 = AS_INDIRECT(R1).actual;
             continue;
           case TAG_CLOSURE:
-            if (ctx->sp == ctx->fp) {
+            if (ctx->sp == ctx->bp) {
               /* apply(cls{A, env}, []) = cls{A, env} */
               OP = OP_RETURN;
               continue;
@@ -121,10 +131,10 @@ cell_t *run(struct context *ctx) {
             /* apply(thn{A, env}, stack) = update(thn{A, env}, eval(A, env, stack)) */
             ensure_space(ctx, 1);
             --ctx->sp;
-            make_frame(ctx->sp, OP_EVAL, AS_THUNK(R1).expr, AS_THUNK(R1).env, ctx->fp);
+            make_frame(ctx->sp, OP_EVAL, AS_THUNK(R1).expr, AS_THUNK(R1).env, ctx->bp);
             make_hole(R1);
             OP = OP_UPDATE;
-            ctx->fp = ctx->sp;
+            ctx->bp = ctx->sp;
             continue;
           default:
             fprintf(stderr, "Fatal error: wrong tag for apply\n");
@@ -132,9 +142,9 @@ cell_t *run(struct context *ctx) {
         }
       case OP_RETURN:
         obj = R1;
-        ctx->sp = ctx->fp;
-        ctx->fp = BFP;
-        if (ctx->fp == NULL) { // todo refactoring
+        ctx->sp = ctx->bp;
+        ctx->bp = BP;
+        if (ctx->bp == NULL) {
           return obj;
         }
         TOS() = obj;

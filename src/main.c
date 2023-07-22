@@ -20,18 +20,16 @@ int main(int argc, char **argv) {
   }
   printf("parsed\n");
   struct context ctx = {
-    .bp = bp,
+    .mp = bp,
     .hp = p.top,
     .sp = ep - 1,
-    .fp = ep - 1,
-    .ep = ep,
+    .bp = ep - 1,
+    .gp = env,
   };
-  cell_t expr = {0};
-  make_varex(&expr, AS_PAIR(AS_PAIR(env).head).head);
-  ctx.fp->frame.op = OP_EVAL;
-  ctx.fp->frame.r1 = &expr;
-  ctx.fp->frame.r2 = env;
-  ctx.fp->frame.bfp = NULL;
+  ctx.bp->frame.op = OP_APPLY;
+  ctx.bp->frame.r1 = AS_PAIR(AS_PAIR(env).head).tail;
+  ctx.bp->frame.r2 = NULL;
+  ctx.bp->frame.bp = NULL;
   cell_t *obj = run(&ctx);
   switch (TAG(obj)) {
     case TAG_INTEGER:
