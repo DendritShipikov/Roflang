@@ -23,13 +23,13 @@ int main(int argc, char **argv) {
     .mp = bp,
     .hp = p.top,
     .sp = ep - 1,
-    .bp = ep - 1,
+    .fp = ep - 1,
     .gp = env,
   };
-  ctx.bp->frame.op = OP_APPLY;
-  ctx.bp->frame.r1 = AS_PAIR(AS_PAIR(env).head).tail;
-  ctx.bp->frame.r2 = NULL;
-  ctx.bp->frame.bp = NULL;
+  ctx.fp->frame.op = OP_APPLY;
+  ctx.fp->frame.r1 = AS_PAIR(AS_PAIR(env).head).tail;
+  ctx.fp->frame.r2 = NULL;
+  ctx.fp->frame.fp = NULL;
   cell_t *obj = run(&ctx);
   switch (TAG(obj)) {
     case TAG_INTEGER:

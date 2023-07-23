@@ -58,7 +58,7 @@ typedef union cell {
     unsigned int op;
     union cell *r1;
     union cell *r2;
-    union cell *bp;
+    union cell *fp;
   } frame;
   struct {
     union cell *value;
@@ -106,7 +106,7 @@ void make_frame(cell_t *p, unsigned int op, cell_t *r1, cell_t *r2, cell_t *bfp)
 
 
 struct context {
-  cell_t *mp, *hp, *sp, *bp;
+  cell_t *mp, *hp, *sp, *fp;
   cell_t *gp;
 };
 
