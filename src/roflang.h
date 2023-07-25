@@ -19,6 +19,7 @@ enum {
 typedef union cell {
   struct {
     unsigned char tag;
+    unsigned char markword;
     union cell *forward;
     union {
       struct {
@@ -67,6 +68,7 @@ typedef union cell {
 
 #define TAG(C) ((C)->object.tag)
 #define FORWARD(C) ((C)->object.forward)
+#define MARKWORD(C) ((C)->object.markword)
 
 #define AS_PAIR(C)     ((C)->object.payload.pair)
 #define AS_CLOSURE(C)  ((C)->object.payload.closure)
@@ -117,6 +119,7 @@ enum {
   OP_UPDATE,
 };
 
+void gc(struct context *ctx);
 cell_t *run(struct context *ctx);
 
 
