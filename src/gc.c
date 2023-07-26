@@ -8,7 +8,7 @@
 #define IS_REACHABLE(C) (MARKWORD(C) == 1)
 #define IS_MOVEABLE(C) (MARKWORD(C) == 2)
 
-static cell_t *traversal(cell_t *p, cell_t *stack) {
+static cell_t *mark(cell_t *p, cell_t *stack) {
   if (IS_INDIRECT(p)) {
     p = AS_INDIRECT(p).actual;
   }
@@ -43,22 +43,22 @@ void gc(struct context *ctx) {
   q = fp;
   while (q != NULL) {
     for (; p < q; ++p) {
-      stack = traversal(p->ref.value, stack);
+      stack = mark(p->ref.value, stack);
     }
     switch (q->frame.op) {
       case OP_EVAL:
-        stack = traversal(q->frame.r2, stack);
+        stack = mark(q->frame.r2, stack);
       case OP_APPLY:
       case OP_UPDATE:
       case OP_RETURN:
-        stack = traversal(q->frame.r1, stack);
+        stack = mark(q->frame.r1, stack);
       default:
         break;
     }
     p = q + 1;
     q = q->frame.fp;
   }
-  stack = traversal(ctx->gp, stack);
+  stack = mark(ctx->gp, stack);
 
   /* mark */
   while (stack != NULL) {
@@ -71,30 +71,30 @@ void gc(struct context *ctx) {
       case TAG_INTEGER:
         break;
       case TAG_PAIR:
-        stack = traversal(AS_PAIR(p).head, stack);
-        stack = traversal(AS_PAIR(p).tail, stack);
+        stack = mark(AS_PAIR(p).head, stack);
+        stack = mark(AS_PAIR(p).tail, stack);
         break;
       case TAG_CLOSURE:
-        stack = traversal(AS_CLOSURE(p).expr, stack);
-        stack = traversal(AS_CLOSURE(p).env, stack);
+        stack = mark(AS_CLOSURE(p).expr, stack);
+        stack = mark(AS_CLOSURE(p).env, stack);
         break;
       case TAG_THUNK:
-        stack = traversal(AS_THUNK(p).expr, stack);
-        stack = traversal(AS_THUNK(p).env, stack);
+        stack = mark(AS_THUNK(p).expr, stack);
+        stack = mark(AS_THUNK(p).env, stack);
         break;
       case TAG_APPEX:
-        stack = traversal(AS_APPEX(p).fun, stack);
-        stack = traversal(AS_APPEX(p).arg, stack);
+        stack = mark(AS_APPEX(p).fun, stack);
+        stack = mark(AS_APPEX(p).arg, stack);
         break;
       case TAG_LAMEX:
-        stack = traversal(AS_LAMEX(p).param, stack);
-        stack = traversal(AS_LAMEX(p).body, stack);
+        stack = mark(AS_LAMEX(p).param, stack);
+        stack = mark(AS_LAMEX(p).body, stack);
         break;
       case TAG_VAREX:
-        stack = traversal(AS_VAREX(p).name, stack);
+        stack = mark(AS_VAREX(p).name, stack);
         break;
       case TAG_LITEX:
-        stack = traversal(AS_LITEX(p).object, stack);
+        stack = mark(AS_LITEX(p).object, stack);
         break;
       default:
         fprintf(stderr, "Fatal error: wrong tag in gc stack\n");
