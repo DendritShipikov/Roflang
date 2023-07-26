@@ -45,6 +45,14 @@ static cell_t *parse_name(struct parser *p) {
   return name;
 }
 
+static int parse_integer(struct parser *p) {
+  int n = 0;
+  while (is_digit(*p->cur)) {
+    n = 10 * n + *p->cur++ - '0';
+  }
+  return n;
+}
+
 cell_t *parse_defs(struct parser *p) {
   static cell_t nil = { .object = { .tag = TAG_NIL, .markword = 0 } };
   cell_t *env = &nil;
@@ -175,9 +183,9 @@ cell_t *parse_item(struct parser *p) {
     // todo memcheck 2
     cell_t *item = p->top++;
     cell_t *obj = p->top++;
-    make_integer(obj, c - '0');
+    int n = parse_integer(p);
+    make_integer(obj, n);
     make_litex(item, obj);
-    ++p->cur;
     return item;
   }
   fprintf(stderr, "Error: wrong item\n");
