@@ -14,7 +14,7 @@ int main(int argc, char **argv) {
     .top = bp,
     .names = NULL,
   };
-  cell_t *env = parse_defs(&p);
+  cell_t *env = parse(&p);
   if (env == NULL) {
     return 0;
   }

@@ -7,6 +7,9 @@ enum {
   TAG_CLOSURE,
   TAG_THUNK,
   TAG_INDIRECT,
+  TAG_ADDEX,
+  TAG_SUBEX,
+  TAG_MULEX,
   TAG_APPEX,
   TAG_LAMEX,
   TAG_VAREX,
@@ -34,6 +37,10 @@ typedef union cell {
         union cell *fun;
         union cell *arg;
       } appex;
+      struct {
+        union cell *left;
+        union cell *right;
+      } binex;
       struct {
         union cell *param;
         union cell *body;
@@ -77,6 +84,7 @@ typedef union cell {
 #define AS_INTEGER(C)  ((C)->object.payload.integer)
 #define AS_SYMBOL(C)   ((C)->object.payload.symbol)
 #define AS_APPEX(C)    ((C)->object.payload.appex)
+#define AS_BINEX(C)    ((C)->object.payload.binex)
 #define AS_LAMEX(C)    ((C)->object.payload.lamex)
 #define AS_VAREX(C)    ((C)->object.payload.varex)
 #define AS_LITEX(C)    ((C)->object.payload.litex)
@@ -88,6 +96,9 @@ typedef union cell {
 #define IS_INTEGER(C)  (TAG(C) == TAG_INTEGER)
 #define IS_SYMBOL(C)   (TAG(C) == TAG_SYMBOL)
 #define IS_APPEX(C)    (TAG(C) == TAG_APPEX)
+#define IS_ADDEX(C)    (TAG(C) == TAG_ADDEX)
+#define IS_SUBEX(C)    (TAG(C) == TAG_SUBEX)
+#define IS_MULEX(C)    (TAG(C) == TAG_MULEX)
 #define IS_LAMEX(C)    (TAG(C) == TAG_LAMEX)
 #define IS_VAREX(C)    (TAG(C) == TAG_VAREX)
 #define IS_LITEX(C)    (TAG(C) == TAG_LITEX)
@@ -99,6 +110,9 @@ void make_indirect(cell_t *p, cell_t *actual);
 void make_integer(cell_t *p, int unboxed);
 void make_symbol(cell_t *p, char unboxed);
 void make_appex(cell_t *p, cell_t *fun, cell_t *arg);
+void make_addex(cell_t *p, cell_t *left, cell_t *right);
+void make_subex(cell_t *p, cell_t *left, cell_t *right);
+void make_mulex(cell_t *p, cell_t *left, cell_t *right);
 void make_lamex(cell_t *p, cell_t *param, cell_t *body);
 void make_varex(cell_t *p, cell_t *name);
 void make_litex(cell_t *p, cell_t *object);
@@ -115,6 +129,12 @@ struct context {
 enum {
   OP_EVAL,
   OP_APPLY,
+  OP_ADD,
+  OP_SUB,
+  OP_MUL,
+  OP_ADDCONT,
+  OP_SUBCONT,
+  OP_MULCONT,
   OP_RETURN,
   OP_UPDATE,
 };
@@ -129,10 +149,7 @@ struct parser {
   cell_t *names;
 };
 
-cell_t *parse_defs(struct parser *p);
-cell_t *parse_expr(struct parser *p);
-cell_t *parse_term(struct parser *p);
-cell_t *parse_item(struct parser *p);
+cell_t *parse(struct parser *p);
 
 
 #endif

@@ -38,6 +38,24 @@ void make_symbol(cell_t *p, char unboxed) {
   AS_SYMBOL(p).unboxed = unboxed;
 }
 
+void make_addex(cell_t *p, cell_t *left, cell_t *right) {
+  make_object(p, TAG_ADDEX);
+  AS_BINEX(p).left = left;
+  AS_BINEX(p).right = right;
+}
+
+void make_subex(cell_t *p, cell_t *left, cell_t *right) {
+  make_object(p, TAG_SUBEX);
+  AS_BINEX(p).left = left;
+  AS_BINEX(p).right = right;
+}
+
+void make_mulex(cell_t *p, cell_t *left, cell_t *right) {
+  make_object(p, TAG_MULEX);
+  AS_BINEX(p).left = left;
+  AS_BINEX(p).right = right;
+}
+
 void make_appex(cell_t *p, cell_t *fun, cell_t *arg) {
   make_object(p, TAG_APPEX);
   AS_APPEX(p).fun = fun;

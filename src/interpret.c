@@ -15,7 +15,7 @@ static void ensure_space(struct context *ctx, int count);
 #define PUSH(C) ((--ctx->sp)->ref.value = (C))
 
 cell_t *run(struct context *ctx) {
-  cell_t *expr, *obj, *env, *pair, *name;
+  cell_t *expr, *obj, *env, *pair, *name, *left, *right;
   for (;;) {
     /* maybe i should save ctx->fp in local variable here (i can do this since ctx->fp is not moved by gc) */
     switch (OP) {
@@ -43,10 +43,34 @@ cell_t *run(struct context *ctx) {
           case TAG_APPEX:
             expr = AS_APPEX(expr).arg;
             break;
+          case TAG_ADDEX:
+            --ctx->sp;
+            make_frame(ctx->sp, OP_EVAL, AS_BINEX(expr).left, R2, ctx->fp);
+            R1 = AS_BINEX(expr).right;
+            OP = OP_ADDCONT;
+            ctx->fp = ctx->sp;
+            continue;
+          case TAG_SUBEX:
+            --ctx->sp;
+            make_frame(ctx->sp, OP_EVAL, AS_BINEX(expr).left, R2, ctx->fp);
+            R1 = AS_BINEX(expr).right;
+            OP = OP_SUBCONT;
+            ctx->fp = ctx->sp;
+            continue;
+          case TAG_MULEX:
+            --ctx->sp;
+            make_frame(ctx->sp, OP_EVAL, AS_BINEX(expr).left, R2, ctx->fp);
+            R1 = AS_BINEX(expr).right;
+            OP = OP_MULCONT;
+            ctx->fp = ctx->sp;
+            continue;
           default:
             break;
         }
         switch (TAG(expr)) {
+          case TAG_ADDEX:
+          case TAG_SUBEX:
+          case TAG_MULEX:
           case TAG_APPEX:
             obj = NEW();
             make_thunk(obj, expr, R2);
@@ -140,6 +164,63 @@ cell_t *run(struct context *ctx) {
             fprintf(stderr, "Fatal error: wrong tag for apply\n");
             exit(1);
         }
+      case OP_ADDCONT:
+        obj = TOS();
+        make_frame(ctx->sp, OP_EVAL, R1, R2, ctx->fp);
+        R1 = obj;
+        OP = OP_ADD;
+        ctx->fp = ctx->sp;
+        continue;
+      case OP_SUBCONT:
+        obj = TOS();
+        make_frame(ctx->sp, OP_EVAL, R1, R2, ctx->fp);
+        R1 = obj;
+        OP = OP_SUB;
+        ctx->fp = ctx->sp;
+        continue;
+      case OP_MULCONT:
+        obj = TOS();
+        make_frame(ctx->sp, OP_EVAL, R1, R2, ctx->fp);
+        R1 = obj;
+        OP = OP_MUL;
+        ctx->fp = ctx->sp;
+        continue;
+      case OP_ADD:
+        right = POP();
+        left = R1;
+        if (!IS_INTEGER(left) || !IS_INTEGER(right)) {
+          fprintf(stderr, "Fatal error: add can be applied only to integers\n");
+          exit(1);
+        }
+        obj = NEW();
+        make_integer(obj, AS_INTEGER(left).unboxed + AS_INTEGER(right).unboxed);
+        R1 = obj;
+        OP = OP_RETURN;
+        continue;
+      case OP_SUB:
+        right = POP();
+        left = R1;
+        if (!IS_INTEGER(left) || !IS_INTEGER(right)) {
+          fprintf(stderr, "Fatal error: sub can be applied only to integers\n");
+          exit(1);
+        }
+        obj = NEW();
+        make_integer(obj, AS_INTEGER(left).unboxed - AS_INTEGER(right).unboxed);
+        R1 = obj;
+        OP = OP_RETURN;
+        continue;
+      case OP_MUL:
+        right = POP();
+        left = R1;
+        if (!IS_INTEGER(left) || !IS_INTEGER(right)) {
+          fprintf(stderr, "Fatal error: mul can be applied only to integers\n");
+          exit(1);
+        }
+        obj = NEW();
+        make_integer(obj, AS_INTEGER(left).unboxed * AS_INTEGER(right).unboxed);
+        R1 = obj;
+        OP = OP_RETURN;
+        continue;
       case OP_RETURN:
         obj = R1;
         ctx->sp = ctx->fp;

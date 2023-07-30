@@ -47,7 +47,13 @@ void gc(struct context *ctx) {
     }
     switch (q->frame.op) {
       case OP_EVAL:
+      case OP_ADDCONT:
+      case OP_SUBCONT:
+      case OP_MULCONT:
         stack = mark(q->frame.r2, stack);
+      case OP_ADD:
+      case OP_SUB:
+      case OP_MUL:
       case OP_APPLY:
       case OP_UPDATE:
       case OP_RETURN:
@@ -86,6 +92,12 @@ void gc(struct context *ctx) {
         stack = mark(AS_APPEX(p).fun, stack);
         stack = mark(AS_APPEX(p).arg, stack);
         break;
+      case TAG_ADDEX:
+      case TAG_SUBEX:
+      case TAG_MULEX:
+        stack = mark(AS_BINEX(p).left, stack);
+        stack = mark(AS_BINEX(p).right, stack);
+        break;
       case TAG_LAMEX:
         stack = mark(AS_LAMEX(p).param, stack);
         stack = mark(AS_LAMEX(p).body, stack);
@@ -120,7 +132,13 @@ void gc(struct context *ctx) {
     }
     switch (q->frame.op) {
       case OP_EVAL:
+      case OP_ADDCONT:
+      case OP_SUBCONT:
+      case OP_MULCONT:
         q->frame.r2 = take(q->frame.r2);
+      case OP_ADD:
+      case OP_SUB:
+      case OP_MUL:
       case OP_APPLY:
       case OP_UPDATE:
       case OP_RETURN:
@@ -155,6 +173,12 @@ void gc(struct context *ctx) {
         case TAG_APPEX:
           AS_APPEX(p).fun = take(AS_APPEX(p).fun);
           AS_APPEX(p).arg = take(AS_APPEX(p).arg);
+          break;
+        case TAG_ADDEX:
+        case TAG_SUBEX:
+        case TAG_MULEX:
+          AS_BINEX(p).left = take(AS_BINEX(p).left);
+          AS_BINEX(p).right = take(AS_BINEX(p).right);
           break;
         case TAG_LAMEX:
           AS_LAMEX(p).param = take(AS_LAMEX(p).param);

@@ -3,6 +3,14 @@
 
 #include "roflang.h"
 
+static cell_t *parse_expr(struct parser *p);
+static cell_t *parse_lambda(struct parser *p);
+static cell_t *parse_term(struct parser *p);
+static cell_t *parse_factor(struct parser *p);
+static cell_t *parse_item(struct parser *p);
+static cell_t *parse_name(struct parser *p);
+static cell_t *parse_number(struct parser *p);
+
 static int is_space(int c) { return c == ' ' || c == '\t' || c == '\r' || c == '\n'; }
 static int is_alpha(int c) { return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'); }
 static int is_digit(int c) { return '0' <= c && c <= '9'; }
@@ -14,7 +22,7 @@ static char tokenize(struct parser *p) {
   return *p->cur;
 }
 
-static cell_t *parse_name(struct parser *p) {
+cell_t *parse_name(struct parser *p) {
   static cell_t nil = { .object = { .tag = TAG_NIL, .markword = 0 } };
   cell_t *name = &nil;
   cell_t *top = p->top;
@@ -45,15 +53,18 @@ static cell_t *parse_name(struct parser *p) {
   return name;
 }
 
-static int parse_integer(struct parser *p) {
+cell_t *parse_number(struct parser *p) {
   int n = 0;
   while (is_digit(*p->cur)) {
     n = 10 * n + *p->cur++ - '0';
   }
-  return n;
+  // todo memcheck 1
+  cell_t *num = p->top++;
+  make_integer(num, n);
+  return num;
 }
 
-cell_t *parse_defs(struct parser *p) {
+cell_t *parse(struct parser *p) {
   static cell_t nil = { .object = { .tag = TAG_NIL, .markword = 0 } };
   cell_t *env = &nil;
   for (;;) {
@@ -103,10 +114,36 @@ cell_t *parse_defs(struct parser *p) {
 
 cell_t *parse_expr(struct parser *p) {
   char c = tokenize(p);
-  if (c != '@') {
-    return parse_term(p);
+  if (c == '@') {
+    return parse_lambda(p);
   }
-  c = *++p->cur;
+  cell_t *expr = parse_term(p);
+  if (expr == NULL) {
+    return NULL;
+  }
+  for (;;) {
+    char c = tokenize(p);
+    if (c != '+' && c != '-') {
+      return expr;
+    }
+    ++p->cur;
+    cell_t *term = parse_term(p);
+    if (term == NULL) {
+      return NULL;
+    }
+    // todo memcheck 1
+    cell_t *tmp = p->top++;
+    if (c == '+') {
+      make_addex(tmp, expr, term);
+    } else {
+      make_subex(tmp, expr, term);
+    }
+    expr = tmp;
+  }
+}
+
+cell_t *parse_lambda(struct parser *p) {
+  char c = *++p->cur;
   if (!is_alpha(c)) {
     fprintf(stderr, "Error: param expected\n");
     return NULL;
@@ -132,15 +169,37 @@ cell_t *parse_expr(struct parser *p) {
 }
 
 cell_t *parse_term(struct parser *p) {
-  tokenize(p);
-  cell_t *term = parse_item(p);
+  cell_t *term = parse_factor(p);
   if (term == NULL) {
     return NULL;
   }
   for (;;) {
     char c = tokenize(p);
-    if (!is_alpha(c) && c != '(' && !is_digit(c)) {
+    if (c != '*') {
       return term;
+    }
+    ++p->cur;
+    cell_t *factor = parse_factor(p);
+    if (factor == NULL) {
+      return NULL;
+    }
+    // todo memcheck 1
+    cell_t *tmp = p->top++;
+    make_mulex(tmp, term, factor);
+    term = tmp;
+  }
+}
+
+cell_t *parse_factor(struct parser *p) {
+  tokenize(p);
+  cell_t *factor = parse_item(p);
+  if (factor == NULL) {
+    return NULL;
+  }
+  for (;;) {
+    char c = tokenize(p);
+    if (!is_alpha(c) && c != '(' && !is_digit(c)) {
+      return factor;
     }
     cell_t *item = parse_item(p);
     if (item == NULL) {
@@ -148,8 +207,8 @@ cell_t *parse_term(struct parser *p) {
     }
     // todo memcheck 1
     cell_t *tmp = p->top++;
-    make_appex(tmp, term, item);
-    term = tmp;
+    make_appex(tmp, factor, item);
+    factor = tmp;
   }
 }
 
@@ -180,12 +239,13 @@ cell_t *parse_item(struct parser *p) {
     return item;
   }
   if (is_digit(c)) {
-    // todo memcheck 2
+    cell_t *num = parse_number(p);
+    if (num == NULL) {
+      return NULL;
+    }
+    // todo memcheck 1
     cell_t *item = p->top++;
-    cell_t *obj = p->top++;
-    int n = parse_integer(p);
-    make_integer(obj, n);
-    make_litex(item, obj);
+    make_litex(item, num);
     return item;
   }
   fprintf(stderr, "Error: wrong item\n");
