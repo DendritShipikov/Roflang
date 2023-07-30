@@ -22,48 +22,6 @@ static char tokenize(struct parser *p) {
   return *p->cur;
 }
 
-cell_t *parse_name(struct parser *p) {
-  static cell_t nil = { .object = { .tag = TAG_NIL, .markword = 0 } };
-  cell_t *name = &nil;
-  cell_t *top = p->top;
-  while (is_alpha(*p->cur)) {
-    // todo memcheck 2
-    cell_t *pair = p->top++;
-    cell_t *sym = p->top++;
-    make_symbol(sym, *p->cur++);
-    make_pair(pair, sym, name);
-    name = pair;
-  }
-  for (cell_t *iter = p->names; iter != NULL; iter = FORWARD(iter)) {
-    cell_t *x = name, *y = iter;
-    while (IS_PAIR(x) && IS_PAIR(y)) {
-      if (AS_SYMBOL(AS_PAIR(y).head).unboxed != AS_SYMBOL(AS_PAIR(x).head).unboxed) {
-        break;
-      }
-      x = AS_PAIR(x).tail;
-      y = AS_PAIR(y).tail;
-    }
-    if (!IS_PAIR(x) && !IS_PAIR(y)) {
-      p->top = top;
-      return iter;
-    }
-  }
-  FORWARD(name) = p->names;
-  p->names = name;
-  return name;
-}
-
-cell_t *parse_number(struct parser *p) {
-  int n = 0;
-  while (is_digit(*p->cur)) {
-    n = 10 * n + *p->cur++ - '0';
-  }
-  // todo memcheck 1
-  cell_t *num = p->top++;
-  make_integer(num, n);
-  return num;
-}
-
 cell_t *parse(struct parser *p) {
   static cell_t nil = { .object = { .tag = TAG_NIL, .markword = 0 } };
   cell_t *env = &nil;
@@ -122,7 +80,7 @@ cell_t *parse_expr(struct parser *p) {
     return NULL;
   }
   for (;;) {
-    char c = tokenize(p);
+    c = tokenize(p);
     if (c != '+' && c != '-') {
       return expr;
     }
@@ -250,4 +208,46 @@ cell_t *parse_item(struct parser *p) {
   }
   fprintf(stderr, "Error: wrong item\n");
   return NULL;
+}
+
+cell_t *parse_name(struct parser *p) {
+  static cell_t nil = { .object = { .tag = TAG_NIL, .markword = 0 } };
+  cell_t *name = &nil;
+  cell_t *top = p->top;
+  while (is_alpha(*p->cur)) {
+    // todo memcheck 2
+    cell_t *pair = p->top++;
+    cell_t *sym = p->top++;
+    make_symbol(sym, *p->cur++);
+    make_pair(pair, sym, name);
+    name = pair;
+  }
+  for (cell_t *iter = p->names; iter != NULL; iter = FORWARD(iter)) {
+    cell_t *x = name, *y = iter;
+    while (IS_PAIR(x) && IS_PAIR(y)) {
+      if (AS_SYMBOL(AS_PAIR(y).head).unboxed != AS_SYMBOL(AS_PAIR(x).head).unboxed) {
+        break;
+      }
+      x = AS_PAIR(x).tail;
+      y = AS_PAIR(y).tail;
+    }
+    if (!IS_PAIR(x) && !IS_PAIR(y)) {
+      p->top = top;
+      return iter;
+    }
+  }
+  FORWARD(name) = p->names;
+  p->names = name;
+  return name;
+}
+
+cell_t *parse_number(struct parser *p) {
+  int n = 0;
+  while (is_digit(*p->cur)) {
+    n = 10 * n + *p->cur++ - '0';
+  }
+  // todo memcheck 1
+  cell_t *num = p->top++;
+  make_integer(num, n);
+  return num;
 }
