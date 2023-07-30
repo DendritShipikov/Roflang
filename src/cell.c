@@ -38,20 +38,9 @@ void make_symbol(cell_t *p, char unboxed) {
   AS_SYMBOL(p).unboxed = unboxed;
 }
 
-void make_addex(cell_t *p, cell_t *left, cell_t *right) {
-  make_object(p, TAG_ADDEX);
-  AS_BINEX(p).left = left;
-  AS_BINEX(p).right = right;
-}
-
-void make_subex(cell_t *p, cell_t *left, cell_t *right) {
-  make_object(p, TAG_SUBEX);
-  AS_BINEX(p).left = left;
-  AS_BINEX(p).right = right;
-}
-
-void make_mulex(cell_t *p, cell_t *left, cell_t *right) {
-  make_object(p, TAG_MULEX);
+void make_binex(cell_t *p, unsigned char exttag, cell_t *left, cell_t *right) {
+  make_object(p, TAG_BINEX);
+  EXTTAG(p) = exttag;
   AS_BINEX(p).left = left;
   AS_BINEX(p).right = right;
 }
@@ -82,8 +71,9 @@ void make_hole(cell_t *p) {
   make_object(p, TAG_HOLE);
 }
 
-void make_frame(cell_t *p, unsigned int op, cell_t *r1, cell_t *r2, cell_t *fp) {
+void make_frame(cell_t *p, unsigned char op, unsigned char extop, cell_t *r1, cell_t *r2, cell_t *fp) {
   p->frame.op = op;
+  p->frame.extop = extop;
   p->frame.r1 = r1;
   p->frame.r2 = r2;
   p->frame.fp = fp;

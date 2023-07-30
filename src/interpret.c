@@ -9,6 +9,7 @@ static void ensure_space(struct context *ctx, int count);
 #define R1      (ctx->fp->frame.r1)
 #define R2      (ctx->fp->frame.r2)
 #define OP      (ctx->fp->frame.op)
+#define EXTOP   (ctx->fp->frame.extop)
 #define FP      (ctx->fp->frame.fp)
 #define TOS()   ((ctx->sp)->ref.value)
 #define POP()   ((ctx->sp++)->ref.value)
@@ -43,34 +44,19 @@ cell_t *run(struct context *ctx) {
           case TAG_APPEX:
             expr = AS_APPEX(expr).arg;
             break;
-          case TAG_ADDEX:
+          case TAG_BINEX:
             --ctx->sp;
-            make_frame(ctx->sp, OP_EVAL, AS_BINEX(expr).left, R2, ctx->fp);
+            make_frame(ctx->sp, OP_EVAL, 0, AS_BINEX(expr).left, R2, ctx->fp);
             R1 = AS_BINEX(expr).right;
-            OP = OP_ADDCONT;
-            ctx->fp = ctx->sp;
-            continue;
-          case TAG_SUBEX:
-            --ctx->sp;
-            make_frame(ctx->sp, OP_EVAL, AS_BINEX(expr).left, R2, ctx->fp);
-            R1 = AS_BINEX(expr).right;
-            OP = OP_SUBCONT;
-            ctx->fp = ctx->sp;
-            continue;
-          case TAG_MULEX:
-            --ctx->sp;
-            make_frame(ctx->sp, OP_EVAL, AS_BINEX(expr).left, R2, ctx->fp);
-            R1 = AS_BINEX(expr).right;
-            OP = OP_MULCONT;
+            EXTOP = EXTTAG(expr);
+            OP = OP_BINCONT;
             ctx->fp = ctx->sp;
             continue;
           default:
             break;
         }
         switch (TAG(expr)) {
-          case TAG_ADDEX:
-          case TAG_SUBEX:
-          case TAG_MULEX:
+          case TAG_BINEX:
           case TAG_APPEX:
             obj = NEW();
             make_thunk(obj, expr, R2);
@@ -155,7 +141,7 @@ cell_t *run(struct context *ctx) {
             /* apply(thn{A, env}, stack) = update(thn{A, env}, eval(A, env, stack)) */
             ensure_space(ctx, 1);
             --ctx->sp;
-            make_frame(ctx->sp, OP_EVAL, AS_THUNK(R1).expr, AS_THUNK(R1).env, ctx->fp);
+            make_frame(ctx->sp, OP_EVAL, 0, AS_THUNK(R1).expr, AS_THUNK(R1).env, ctx->fp);
             make_hole(R1);
             OP = OP_UPDATE;
             ctx->fp = ctx->sp;
@@ -164,60 +150,35 @@ cell_t *run(struct context *ctx) {
             fprintf(stderr, "Fatal error: wrong tag for apply\n");
             exit(1);
         }
-      case OP_ADDCONT:
+      case OP_BINCONT:
         obj = TOS();
-        make_frame(ctx->sp, OP_EVAL, R1, R2, ctx->fp);
+        make_frame(ctx->sp, OP_EVAL, 0, R1, R2, ctx->fp);
         R1 = obj;
-        OP = OP_ADD;
+        OP = OP_BIN;
         ctx->fp = ctx->sp;
         continue;
-      case OP_SUBCONT:
-        obj = TOS();
-        make_frame(ctx->sp, OP_EVAL, R1, R2, ctx->fp);
-        R1 = obj;
-        OP = OP_SUB;
-        ctx->fp = ctx->sp;
-        continue;
-      case OP_MULCONT:
-        obj = TOS();
-        make_frame(ctx->sp, OP_EVAL, R1, R2, ctx->fp);
-        R1 = obj;
-        OP = OP_MUL;
-        ctx->fp = ctx->sp;
-        continue;
-      case OP_ADD:
+      case OP_BIN:
         right = POP();
         left = R1;
         if (!IS_INTEGER(left) || !IS_INTEGER(right)) {
-          fprintf(stderr, "Fatal error: add can be applied only to integers\n");
+          fprintf(stderr, "Fatal error: binary operator can be applied only to integers\n");
           exit(1);
         }
         obj = NEW();
-        make_integer(obj, AS_INTEGER(left).unboxed + AS_INTEGER(right).unboxed);
-        R1 = obj;
-        OP = OP_RETURN;
-        continue;
-      case OP_SUB:
-        right = POP();
-        left = R1;
-        if (!IS_INTEGER(left) || !IS_INTEGER(right)) {
-          fprintf(stderr, "Fatal error: sub can be applied only to integers\n");
-          exit(1);
+        switch (EXTOP) {
+          case EXT_ADD:
+            make_integer(obj, AS_INTEGER(left).unboxed + AS_INTEGER(right).unboxed);
+            break;
+          case EXT_SUB:
+            make_integer(obj, AS_INTEGER(left).unboxed - AS_INTEGER(right).unboxed);
+            break;
+          case EXT_MUL:
+            make_integer(obj, AS_INTEGER(left).unboxed * AS_INTEGER(right).unboxed);
+            break;
+          default:
+            fprintf(stderr, "Fatal error: wrong extop in binary operator\n");
+            exit(1);
         }
-        obj = NEW();
-        make_integer(obj, AS_INTEGER(left).unboxed - AS_INTEGER(right).unboxed);
-        R1 = obj;
-        OP = OP_RETURN;
-        continue;
-      case OP_MUL:
-        right = POP();
-        left = R1;
-        if (!IS_INTEGER(left) || !IS_INTEGER(right)) {
-          fprintf(stderr, "Fatal error: mul can be applied only to integers\n");
-          exit(1);
-        }
-        obj = NEW();
-        make_integer(obj, AS_INTEGER(left).unboxed * AS_INTEGER(right).unboxed);
         R1 = obj;
         OP = OP_RETURN;
         continue;

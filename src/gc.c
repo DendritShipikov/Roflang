@@ -47,13 +47,9 @@ void gc(struct context *ctx) {
     }
     switch (q->frame.op) {
       case OP_EVAL:
-      case OP_ADDCONT:
-      case OP_SUBCONT:
-      case OP_MULCONT:
+      case OP_BINCONT:
         stack = mark(q->frame.r2, stack);
-      case OP_ADD:
-      case OP_SUB:
-      case OP_MUL:
+      case OP_BIN:
       case OP_APPLY:
       case OP_UPDATE:
       case OP_RETURN:
@@ -92,9 +88,7 @@ void gc(struct context *ctx) {
         stack = mark(AS_APPEX(p).fun, stack);
         stack = mark(AS_APPEX(p).arg, stack);
         break;
-      case TAG_ADDEX:
-      case TAG_SUBEX:
-      case TAG_MULEX:
+      case TAG_BINEX:
         stack = mark(AS_BINEX(p).left, stack);
         stack = mark(AS_BINEX(p).right, stack);
         break;
@@ -132,13 +126,9 @@ void gc(struct context *ctx) {
     }
     switch (q->frame.op) {
       case OP_EVAL:
-      case OP_ADDCONT:
-      case OP_SUBCONT:
-      case OP_MULCONT:
+      case OP_BINCONT:
         q->frame.r2 = take(q->frame.r2);
-      case OP_ADD:
-      case OP_SUB:
-      case OP_MUL:
+      case OP_BIN:
       case OP_APPLY:
       case OP_UPDATE:
       case OP_RETURN:
@@ -174,9 +164,7 @@ void gc(struct context *ctx) {
           AS_APPEX(p).fun = take(AS_APPEX(p).fun);
           AS_APPEX(p).arg = take(AS_APPEX(p).arg);
           break;
-        case TAG_ADDEX:
-        case TAG_SUBEX:
-        case TAG_MULEX:
+        case TAG_BINEX:
           AS_BINEX(p).left = take(AS_BINEX(p).left);
           AS_BINEX(p).right = take(AS_BINEX(p).right);
           break;

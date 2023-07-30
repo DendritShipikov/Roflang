@@ -91,11 +91,7 @@ cell_t *parse_expr(struct parser *p) {
     }
     // todo memcheck 1
     cell_t *tmp = p->top++;
-    if (c == '+') {
-      make_addex(tmp, expr, term);
-    } else {
-      make_subex(tmp, expr, term);
-    }
+    make_binex(tmp, c == '+' ? EXT_ADD : EXT_SUB, expr, term);
     expr = tmp;
   }
 }
@@ -143,7 +139,7 @@ cell_t *parse_term(struct parser *p) {
     }
     // todo memcheck 1
     cell_t *tmp = p->top++;
-    make_mulex(tmp, term, factor);
+    make_binex(tmp, EXT_MUL, term, factor);
     term = tmp;
   }
 }
