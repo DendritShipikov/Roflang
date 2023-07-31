@@ -69,8 +69,10 @@ void gc(struct context *ctx) {
     switch (TAG(p)) {
       case TAG_NIL:
       case TAG_HOLE:
-      case TAG_SYMBOL:
       case TAG_INTEGER:
+        break;
+      case TAG_SYMBOL:
+        stack = mark(AS_SYMBOL(p).tail, stack);
         break;
       case TAG_PAIR:
         stack = mark(AS_PAIR(p).head, stack);
@@ -145,8 +147,10 @@ void gc(struct context *ctx) {
       switch (TAG(p)) {
         case TAG_NIL:
         case TAG_HOLE:
-        case TAG_SYMBOL:
         case TAG_INTEGER:
+          break;
+        case TAG_SYMBOL:
+          AS_SYMBOL(p).tail = take(AS_SYMBOL(p).tail);
           break;
         case TAG_PAIR:
           AS_PAIR(p).head = take(AS_PAIR(p).head);

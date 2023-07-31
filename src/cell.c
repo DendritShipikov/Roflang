@@ -11,6 +11,12 @@ void make_pair(cell_t *p, cell_t *head, cell_t *tail) {
   AS_PAIR(p).tail = tail;
 }
 
+void make_symbol(cell_t *p, char head, cell_t *tail) {
+  make_object(p, TAG_SYMBOL);
+  AS_SYMBOL(p).head = head;
+  AS_SYMBOL(p).tail = tail;
+}
+
 void make_closure(cell_t *p, cell_t *expr, cell_t *env) {
   make_object(p, TAG_CLOSURE);
   AS_CLOSURE(p).expr = expr;
@@ -31,11 +37,6 @@ void make_indirect(cell_t *p, cell_t *actual) {
 void make_integer(cell_t *p, int unboxed) {
   make_object(p, TAG_INTEGER);
   AS_INTEGER(p).unboxed = unboxed;
-}
-
-void make_symbol(cell_t *p, char unboxed) {
-  make_object(p, TAG_SYMBOL);
-  AS_SYMBOL(p).unboxed = unboxed;
 }
 
 void make_binex(cell_t *p, unsigned char exttag, cell_t *left, cell_t *right) {

@@ -211,23 +211,21 @@ cell_t *parse_name(struct parser *p) {
   cell_t *name = &nil;
   cell_t *top = p->top;
   while (is_alpha(*p->cur)) {
-    // todo memcheck 2
-    cell_t *pair = p->top++;
-    cell_t *sym = p->top++;
-    make_symbol(sym, *p->cur++);
-    make_pair(pair, sym, name);
-    name = pair;
+    // todo memcheck 1
+    cell_t *tmp = p->top++;
+    make_symbol(tmp, *p->cur++, name);
+    name = tmp;
   }
   for (cell_t *iter = p->names; iter != NULL; iter = FORWARD(iter)) {
     cell_t *x = name, *y = iter;
-    while (IS_PAIR(x) && IS_PAIR(y)) {
-      if (AS_SYMBOL(AS_PAIR(y).head).unboxed != AS_SYMBOL(AS_PAIR(x).head).unboxed) {
+    while (IS_SYMBOL(x) && IS_SYMBOL(y)) {
+      if (AS_SYMBOL(x).head != AS_SYMBOL(y).head) {
         break;
       }
-      x = AS_PAIR(x).tail;
-      y = AS_PAIR(y).tail;
+      x = AS_SYMBOL(x).tail;
+      y = AS_SYMBOL(y).tail;
     }
-    if (!IS_PAIR(x) && !IS_PAIR(y)) {
+    if (!IS_SYMBOL(x) && !IS_SYMBOL(y)) {
       p->top = top;
       return iter;
     }

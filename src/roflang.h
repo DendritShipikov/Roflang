@@ -35,6 +35,10 @@ typedef union cell {
         union cell *tail;
       } pair;
       struct {
+        char head;
+        union cell *tail;
+      } symbol;
+      struct {
         union cell *expr;
         union cell *env;
       } closure, thunk;
@@ -62,9 +66,6 @@ typedef union cell {
       struct {
         int unboxed;
       } integer;
-      struct {
-        char unboxed;
-      } symbol;
     } payload;
   } object;
   struct {
@@ -109,11 +110,11 @@ typedef union cell {
 #define IS_LITEX(C)    (TAG(C) == TAG_LITEX)
 
 void make_pair(cell_t *p, cell_t *head, cell_t *tail);
+void make_symbol(cell_t *p, char head, cell_t *tail);
 void make_closure(cell_t *p, cell_t *expr, cell_t *env);
 void make_thunk(cell_t *p, cell_t *expr, cell_t *env);
 void make_indirect(cell_t *p, cell_t *actual);
 void make_integer(cell_t *p, int unboxed);
-void make_symbol(cell_t *p, char unboxed);
 void make_appex(cell_t *p, cell_t *fun, cell_t *arg);
 void make_binex(cell_t *p, unsigned char exttag, cell_t *left, cell_t *right);
 void make_lamex(cell_t *p, cell_t *param, cell_t *body);
