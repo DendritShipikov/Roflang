@@ -34,9 +34,9 @@ void make_indirect(cell_t *p, cell_t *actual) {
   AS_INDIRECT(p).actual = actual;
 }
 
-void make_integer(cell_t *p, int unboxed) {
+void make_integer(cell_t *p, int value) {
   make_object(p, TAG_INTEGER);
-  AS_INTEGER(p).unboxed = unboxed;
+  AS_INTEGER(p).value = value;
 }
 
 void make_binex(cell_t *p, unsigned char exttag, cell_t *left, cell_t *right) {
@@ -46,10 +46,10 @@ void make_binex(cell_t *p, unsigned char exttag, cell_t *left, cell_t *right) {
   AS_BINEX(p).right = right;
 }
 
-void make_appex(cell_t *p, cell_t *fun, cell_t *arg) {
+void make_appex(cell_t *p, cell_t *function, cell_t *argument) {
   make_object(p, TAG_APPEX);
-  AS_APPEX(p).fun = fun;
-  AS_APPEX(p).arg = arg;
+  AS_APPEX(p).function = function;
+  AS_APPEX(p).argument = argument;
 }
 
 void make_lamex(cell_t *p, cell_t *param, cell_t *body) {
@@ -72,10 +72,10 @@ void make_hole(cell_t *p) {
   make_object(p, TAG_HOLE);
 }
 
-void make_frame(cell_t *p, unsigned char op, unsigned char extop, cell_t *r1, cell_t *r2, cell_t *fp) {
+void make_frame(cell_t *p, unsigned char op, unsigned char ar, cell_t *r1, cell_t *r2, cell_t *bp) {
   p->frame.op = op;
-  p->frame.extop = extop;
+  p->frame.ar = ar;
   p->frame.r1 = r1;
   p->frame.r2 = r2;
-  p->frame.fp = fp;
+  p->frame.bp = bp;
 }

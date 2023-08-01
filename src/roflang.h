@@ -43,8 +43,8 @@ typedef union cell {
         union cell *env;
       } closure, thunk;
       struct {
-        union cell *fun;
-        union cell *arg;
+        union cell *function;
+        union cell *argument;
       } appex;
       struct {
         union cell *left;
@@ -64,16 +64,16 @@ typedef union cell {
         union cell *actual;
       } indirect;
       struct {
-        int unboxed;
+        int value;
       } integer;
     } payload;
   } object;
   struct {
     unsigned char op;
-    unsigned char extop;
+    unsigned char ar;
     union cell *r1;
     union cell *r2;
-    union cell *fp;
+    union cell *bp;
   } frame;
   struct {
     union cell *value;
@@ -114,15 +114,15 @@ void make_symbol(cell_t *p, char head, cell_t *tail);
 void make_closure(cell_t *p, cell_t *expr, cell_t *env);
 void make_thunk(cell_t *p, cell_t *expr, cell_t *env);
 void make_indirect(cell_t *p, cell_t *actual);
-void make_integer(cell_t *p, int unboxed);
-void make_appex(cell_t *p, cell_t *fun, cell_t *arg);
+void make_integer(cell_t *p, int value);
+void make_appex(cell_t *p, cell_t *function, cell_t *argument);
 void make_binex(cell_t *p, unsigned char exttag, cell_t *left, cell_t *right);
 void make_lamex(cell_t *p, cell_t *param, cell_t *body);
 void make_varex(cell_t *p, cell_t *name);
 void make_litex(cell_t *p, cell_t *object);
 void make_hole(cell_t *p);
 
-void make_frame(cell_t *p, unsigned char op, unsigned char extop, cell_t *r1, cell_t *r2, cell_t *bfp);
+void make_frame(cell_t *p, unsigned char op, unsigned char ar, cell_t *r1, cell_t *r2, cell_t *bp);
 
 
 struct context {

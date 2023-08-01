@@ -9,8 +9,8 @@ static void ensure_space(struct context *ctx, int count);
 #define R1      (ctx->fp->frame.r1)
 #define R2      (ctx->fp->frame.r2)
 #define OP      (ctx->fp->frame.op)
-#define EXTOP   (ctx->fp->frame.extop)
-#define FP      (ctx->fp->frame.fp)
+#define AR      (ctx->fp->frame.ar)
+#define BP      (ctx->fp->frame.bp)
 #define TOS()   ((ctx->sp)->ref.value)
 #define POP()   ((ctx->sp++)->ref.value)
 #define PUSH(C) ((--ctx->sp)->ref.value = (C))
@@ -42,13 +42,13 @@ cell_t *run(struct context *ctx) {
             R1 = AS_LAMEX(expr).body;
             continue;
           case TAG_APPEX:
-            expr = AS_APPEX(expr).arg;
+            expr = AS_APPEX(expr).argument;
             break;
           case TAG_BINEX:
             --ctx->sp;
             make_frame(ctx->sp, OP_EVAL, 0, AS_BINEX(expr).left, R2, ctx->fp);
             R1 = AS_BINEX(expr).right;
-            EXTOP = EXTTAG(expr);
+            AR = EXTTAG(expr);
             OP = OP_BINCONT;
             ctx->fp = ctx->sp;
             continue;
@@ -103,7 +103,7 @@ cell_t *run(struct context *ctx) {
           /* eval(A(@x.B), env, stack) = eval(A, env, cls{@x.B, env}:stack) */
           /* eval(A(BC), env, stack) = eval(A, env, thn{BC, env}:stack) */
           PUSH(obj);
-          R1 = AS_APPEX(expr).fun;
+          R1 = AS_APPEX(expr).function;
           continue;
         }
         /* eval(#obj, env, stack) = apply(obj, stack) */
@@ -165,15 +165,15 @@ cell_t *run(struct context *ctx) {
           exit(1);
         }
         obj = NEW();
-        switch (EXTOP) {
+        switch (AR) {
           case EXT_ADD:
-            make_integer(obj, AS_INTEGER(left).unboxed + AS_INTEGER(right).unboxed);
+            make_integer(obj, AS_INTEGER(left).value + AS_INTEGER(right).value);
             break;
           case EXT_SUB:
-            make_integer(obj, AS_INTEGER(left).unboxed - AS_INTEGER(right).unboxed);
+            make_integer(obj, AS_INTEGER(left).value - AS_INTEGER(right).value);
             break;
           case EXT_MUL:
-            make_integer(obj, AS_INTEGER(left).unboxed * AS_INTEGER(right).unboxed);
+            make_integer(obj, AS_INTEGER(left).value * AS_INTEGER(right).value);
             break;
           default:
             fprintf(stderr, "Fatal error: wrong extop in binary operator\n");
@@ -185,7 +185,7 @@ cell_t *run(struct context *ctx) {
       case OP_RETURN:
         obj = R1;
         ctx->sp = ctx->fp;
-        ctx->fp = FP;
+        ctx->fp = BP;
         if (ctx->fp == NULL) {
           return obj;
         }

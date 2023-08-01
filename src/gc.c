@@ -3,8 +3,8 @@
 
 #include "roflang.h"
 
-#define REACHABLE(C) (MARKWORD(C) = 1)
-#define MOVEABLE(C) (MARKWORD(C) = 2)
+#define SET_REACHABLE(C) (MARKWORD(C) = 1)
+#define SET_MOVEABLE(C) (MARKWORD(C) = 2)
 #define IS_REACHABLE(C) (MARKWORD(C) == 1)
 #define IS_MOVEABLE(C) (MARKWORD(C) == 2)
 
@@ -13,7 +13,7 @@ static cell_t *mark(cell_t *p, cell_t *stack) {
     p = AS_INDIRECT(p).actual;
   }
   if (!IS_REACHABLE(p)) {
-    REACHABLE(p);
+    SET_REACHABLE(p);
     FORWARD(p) = stack;
     return p;
   }
@@ -58,7 +58,7 @@ void gc(struct context *ctx) {
         break;
     }
     p = q + 1;
-    q = q->frame.fp;
+    q = q->frame.bp;
   }
   stack = mark(ctx->gp, stack);
 
@@ -87,8 +87,8 @@ void gc(struct context *ctx) {
         stack = mark(AS_THUNK(p).env, stack);
         break;
       case TAG_APPEX:
-        stack = mark(AS_APPEX(p).fun, stack);
-        stack = mark(AS_APPEX(p).arg, stack);
+        stack = mark(AS_APPEX(p).function, stack);
+        stack = mark(AS_APPEX(p).argument, stack);
         break;
       case TAG_BINEX:
         stack = mark(AS_BINEX(p).left, stack);
@@ -114,7 +114,7 @@ void gc(struct context *ctx) {
   for (q = p = mp; p < hp; ++p) {
     if (MARKWORD(p)) {
       FORWARD(p) = q++;
-      MOVEABLE(p);
+      SET_MOVEABLE(p);
     }
   }
   ctx->hp = q;
@@ -139,7 +139,7 @@ void gc(struct context *ctx) {
         break;
     }
     p = q + 1;
-    q = q->frame.fp;
+    q = q->frame.bp;
   }
   ctx->gp = take(ctx->gp);
   for (p = mp; p < hp; ++p) {
@@ -165,8 +165,8 @@ void gc(struct context *ctx) {
           AS_THUNK(p).env = take(AS_THUNK(p).env);
           break;
         case TAG_APPEX:
-          AS_APPEX(p).fun = take(AS_APPEX(p).fun);
-          AS_APPEX(p).arg = take(AS_APPEX(p).arg);
+          AS_APPEX(p).function = take(AS_APPEX(p).function);
+          AS_APPEX(p).argument = take(AS_APPEX(p).argument);
           break;
         case TAG_BINEX:
           AS_BINEX(p).left = take(AS_BINEX(p).left);

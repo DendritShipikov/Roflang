@@ -7,11 +7,11 @@ int main(int argc, char **argv) {
   if (argc < 2) {
     return 0;
   }
-  static cell_t bp[1024];
-  cell_t *ep = bp + 1024;
+  static cell_t mem[1024];
+  cell_t *lim = mem + 1024;
   struct parser p = {
     .cur = argv[1],
-    .top = bp,
+    .top = mem,
     .names = NULL,
   };
   cell_t *env = parse(&p);
@@ -20,20 +20,21 @@ int main(int argc, char **argv) {
   }
   printf("parsed\n");
   struct context ctx = {
-    .mp = bp,
+    .mp = mem,
     .hp = p.top,
-    .sp = ep - 1,
-    .fp = ep - 1,
+    .sp = lim - 1,
+    .fp = lim - 1,
     .gp = env,
   };
   ctx.fp->frame.op = OP_APPLY;
+  ctx.fp->frame.ar = 0;
   ctx.fp->frame.r1 = AS_PAIR(AS_PAIR(env).head).tail;
   ctx.fp->frame.r2 = NULL;
-  ctx.fp->frame.fp = NULL;
+  ctx.fp->frame.bp = NULL;
   cell_t *obj = run(&ctx);
   switch (TAG(obj)) {
     case TAG_INTEGER:
-      printf("%d\n", AS_INTEGER(obj).unboxed);
+      printf("%d\n", AS_INTEGER(obj).value);
       break;
     case TAG_CLOSURE:
       printf("<closure>\n");
