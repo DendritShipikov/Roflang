@@ -2,82 +2,82 @@
 #define ROFLANG_H
 
 enum {
-  TAG_NIL,
-  TAG_PAIR,
-  TAG_CLOSURE,
-  TAG_THUNK,
-  TAG_INDIRECT,
-  TAG_BINEX,
-  TAG_APPEX,
-  TAG_LAMEX,
-  TAG_VAREX,
-  TAG_LITEX,
-  TAG_INTEGER,
-  TAG_SYMBOL,
-  TAG_HOLE,
+	TAG_NIL,
+	TAG_PAIR,
+	TAG_CLOSURE,
+	TAG_THUNK,
+	TAG_INDIRECT,
+	TAG_BINEX,
+	TAG_APPEX,
+	TAG_LAMEX,
+	TAG_VAREX,
+	TAG_LITEX,
+	TAG_INTEGER,
+	TAG_SYMBOL,
+	TAG_HOLE,
 };
 
 enum {
-  EXT_ADD,
-  EXT_SUB,
-  EXT_MUL,
+	EXT_ADD,
+	EXT_SUB,
+	EXT_MUL,
 };
 
 typedef union cell {
-  struct {
-    unsigned char tag;
-    unsigned char exttag;
-    unsigned char markword;
-    union cell *forward;
-    union {
-      struct {
-        union cell *head;
-        union cell *tail;
-      } pair;
-      struct {
-        char head;
-        union cell *tail;
-      } symbol;
-      struct {
-        union cell *expr;
-        union cell *env;
-      } closure, thunk;
-      struct {
-        union cell *function;
-        union cell *argument;
-      } appex;
-      struct {
-        union cell *left;
-        union cell *right;
-      } binex;
-      struct {
-        union cell *param;
-        union cell *body;
-      } lamex;
-      struct {
-        union cell *name;
-      } varex;
-      struct {
-        union cell *object;
-      } litex;
-      struct {
-        union cell *actual;
-      } indirect;
-      struct {
-        int value;
-      } integer;
-    } payload;
-  } object;
-  struct {
-    unsigned char op;
-    unsigned char ar;
-    union cell *r1;
-    union cell *r2;
-    union cell *bp;
-  } frame;
-  struct {
-    union cell *value;
-  } ref;
+	struct {
+		unsigned char tag;
+		unsigned char exttag;
+		unsigned char markword;
+		union cell *forward;
+		union {
+			struct {
+				union cell *head;
+				union cell *tail;
+			} pair;
+			struct {
+				char head;
+				union cell *tail;
+			} symbol;
+			struct {
+				union cell *expr;
+				union cell *env;
+			} closure, thunk;
+			struct {
+				union cell *function;
+				union cell *argument;
+			} appex;
+			struct {
+				union cell *left;
+				union cell *right;
+			} binex;
+			struct {
+				union cell *param;
+				union cell *body;
+			} lamex;
+			struct {
+				union cell *name;
+			} varex;
+			struct {
+				union cell *object;
+			} litex;
+			struct {
+				union cell *actual;
+			} indirect;
+			struct {
+				int value;
+			} integer;
+		} payload;
+	} object;
+	struct {
+		unsigned char op;
+		unsigned char ar;
+		union cell *r1;
+		union cell *r2;
+		union cell *bp;
+	} frame;
+	struct {
+		union cell *value;
+	} ref;
 } cell_t;
 
 #define TAG(C) ((C)->object.tag)
@@ -126,17 +126,17 @@ void make_frame(cell_t *p, unsigned char op, unsigned char ar, cell_t *r1, cell_
 
 
 struct context {
-  cell_t *mp, *hp, *sp, *fp;
-  cell_t *gp;
+	cell_t *mp, *hp, *sp, *fp;
+	cell_t *gp;
 };
 
 enum {
-  OP_EVAL,
-  OP_APPLY,
-  OP_BIN,
-  OP_BINCONT,
-  OP_RETURN,
-  OP_UPDATE,
+	OP_EVAL,
+	OP_APPLY,
+	OP_BIN,
+	OP_BINCONT,
+	OP_RETURN,
+	OP_UPDATE,
 };
 
 void gc(struct context *ctx);
@@ -144,9 +144,9 @@ cell_t *run(struct context *ctx);
 
 
 struct parser {
-  const char *cur;
-  cell_t *top;
-  cell_t *names;
+	const char *cur;
+	cell_t *top;
+	cell_t *names;
 };
 
 cell_t *parse(struct parser *p);
