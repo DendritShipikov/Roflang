@@ -139,7 +139,7 @@ enum {
 	OP_UPDATE,
 };
 
-void gc(struct context *ctx);
+void compact(struct context *ctx);
 cell_t *run(struct context *ctx);
 
 

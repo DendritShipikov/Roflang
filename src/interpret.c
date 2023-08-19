@@ -206,7 +206,7 @@ cell_t *run(struct context *ctx) {
 
 static void ensure_space(struct context *ctx, int count) {
 	if (ctx->sp - ctx->hp < count) {
-		gc(ctx);
+		compact(ctx);
 		if (ctx->sp - ctx->hp < count) {
 			fprintf(stderr, "Runtime error: memory is out\n");
 			exit(1);
