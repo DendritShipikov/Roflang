@@ -54,7 +54,7 @@ cell_t *parse(struct parser *p) {
 			return NULL;
 		}
 		++p->cur;
-		// todo memcheck 3
+		// TODO: memcheck 3
 		cell_t *pair = p->top++;
 		cell_t *obj = p->top++;
 		cell_t *tmp = p->top++;
@@ -89,7 +89,7 @@ cell_t *parse_expr(struct parser *p) {
 		if (term == NULL) {
 			return NULL;
 		}
-		// todo memcheck 1
+		// TODO: memcheck 1
 		cell_t *tmp = p->top++;
 		make_binex(tmp, c == '+' ? EXT_ADD : EXT_SUB, expr, term);
 		expr = tmp;
@@ -116,7 +116,7 @@ cell_t *parse_lambda(struct parser *p) {
 	if (body == NULL) {
 		return NULL;
 	}
-	// todo memcheck 1
+	// TODO: memcheck 1
 	cell_t *expr = p->top++;
 	make_lamex(expr, param, body);
 	return expr;
@@ -137,7 +137,7 @@ cell_t *parse_term(struct parser *p) {
 		if (factor == NULL) {
 			return NULL;
 		}
-		// todo memcheck 1
+		// TODO: memcheck 1
 		cell_t *tmp = p->top++;
 		make_binex(tmp, EXT_MUL, term, factor);
 		term = tmp;
@@ -159,7 +159,7 @@ cell_t *parse_factor(struct parser *p) {
 		if (item == NULL) {
 			return NULL;
 		}
-		// todo memcheck 1
+		// TODO: memcheck 1
 		cell_t *tmp = p->top++;
 		make_appex(tmp, factor, item);
 		factor = tmp;
@@ -183,7 +183,7 @@ cell_t *parse_item(struct parser *p) {
 		return item;
 	}
 	if (is_alpha(c)) {
-		// todo memcheck 1
+		// TODO: memcheck 1
 		cell_t *item = p->top++;
 		cell_t *name = parse_name(p);
 		if (name == NULL) {
@@ -197,7 +197,7 @@ cell_t *parse_item(struct parser *p) {
 		if (num == NULL) {
 			return NULL;
 		}
-		// todo memcheck 1
+		// TODO: memcheck 1
 		cell_t *item = p->top++;
 		make_litex(item, num);
 		return item;
@@ -211,7 +211,7 @@ cell_t *parse_name(struct parser *p) {
 	cell_t *name = &nil;
 	cell_t *top = p->top;
 	while (is_alpha(*p->cur)) {
-		// todo memcheck 1
+		// TODO: memcheck 1
 		cell_t *tmp = p->top++;
 		make_symbol(tmp, *p->cur++, name);
 		name = tmp;
@@ -240,7 +240,7 @@ cell_t *parse_number(struct parser *p) {
 	while (is_digit(*p->cur)) {
 		n = 10 * n + *p->cur++ - '0';
 	}
-	// todo memcheck 1
+	// TODO: memcheck 1
 	cell_t *num = p->top++;
 	make_integer(num, n);
 	return num;
