@@ -7,31 +7,30 @@ int main(int argc, char **argv) {
 	if (argc < 2) {
 		return 0;
 	}
+	static cell_t nil;
 	static cell_t mem[1024];
-	cell_t *lim = mem + 1024;
+	static value_t stack[256];
+
 	struct parser p = {
 		.cur = argv[1],
 		.top = mem,
 		.names = NULL,
 	};
-	cell_t *env = parse(&p);
-	if (env == NULL) {
+
+	cell_t *binds = parse(&p);
+	if (binds == NULL) {
 		return 0;
 	}
 	printf("parsed\n");
+
 	struct context ctx = {
-		.mp = mem,
-		.hp = p.top,
-		.sp = lim - 1,
-		.fp = lim - 1,
-		.gp = env,
+		.ep = stack, .sp = stack + 256, .fp = stack + 256, .bp = stack + 256,
+		.heap_mem = p.top, .free_mem = p.top, .meta_mem = mem + 1024,
+		.binds = binds,
+		.names = &nil,
 	};
-	ctx.fp->frame.op = OP_APPLY;
-	ctx.fp->frame.ar = 0;
-	ctx.fp->frame.r1 = AS_PAIR(AS_PAIR(env).head).tail;
-	ctx.fp->frame.r2 = NULL;
-	ctx.fp->frame.bp = NULL;
-	cell_t *obj = run(&ctx);
+	cell_t *obj = interpret(&ctx);
+
 	switch (TAG(obj)) {
 	case TAG_INTEGER:
 		printf("%d\n", AS_INTEGER(obj).value);

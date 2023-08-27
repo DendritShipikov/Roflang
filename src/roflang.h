@@ -125,22 +125,28 @@ void make_hole(cell_t *p);
 void make_frame(cell_t *p, unsigned char op, unsigned char ar, cell_t *r1, cell_t *r2, cell_t *bp);
 
 
+typedef union value {
+	unsigned int op;
+	union value *fp;
+	cell_t *obj;
+} value_t;
+
 struct context {
-	cell_t *mp, *hp, *sp, *fp;
-	cell_t *gp;
+	value_t *ep, *sp, *fp, *bp;
+	cell_t *heap_mem, *free_mem, *meta_mem;
+	cell_t *binds;
+	cell_t *names;
 };
 
 enum {
 	OP_EVAL,
-	OP_APPLY,
-	OP_BIN,
-	OP_BINCONT,
-	OP_RETURN,
 	OP_UPDATE,
+	OP_RIGHT,
+	OP_BIN,
 };
 
 void compact(struct context *ctx);
-cell_t *run(struct context *ctx);
+cell_t *interpret(struct context *ctx);
 
 
 struct parser {

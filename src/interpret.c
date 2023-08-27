@@ -3,213 +3,217 @@
 
 #include "roflang.h"
 
-static void ensure_space(struct context *ctx, int count);
+#define NEW() (free_mem++)
+#define POP() ((sp++)->obj)
+#define PUSH(C) ((--sp)->obj = (C))
 
-#define NEW()   (ctx->hp++)
-#define R1      (ctx->fp->frame.r1)
-#define R2      (ctx->fp->frame.r2)
-#define OP      (ctx->fp->frame.op)
-#define AR      (ctx->fp->frame.ar)
-#define BP      (ctx->fp->frame.bp)
-#define TOS()   ((ctx->sp)->ref.value)
-#define POP()   ((ctx->sp++)->ref.value)
-#define PUSH(C) ((--ctx->sp)->ref.value = (C))
+#define STACK_CHECK(N) \
+	do { \
+		if (sp - ep < N + 2) { \
+			fprintf(stderr, "Fatal error: stack overflow\n"); \
+			exit(1); \
+		} \
+	} while (0)
 
-cell_t *run(struct context *ctx) {
-	cell_t *expr, *obj, *env, *pair, *name, *left, *right;
-	for (;;) {
-		/* maybe i should save ctx->fp in local variable here (i can do this since ctx->fp is not moved by gc) */
-		switch (OP) {
-		case OP_EVAL:
-			ensure_space(ctx, 2);
-			expr = R1;
-			switch (TAG(expr)) {
-			case TAG_LAMEX:
-				if (ctx->sp == ctx->fp) {
-					/* eval(@x.E, env, []) = cls{@x.E, env} */
-					R1 = NEW();
-					make_closure(R1, expr, R2);
-					OP = OP_RETURN;
-					continue;
-				}
-				/* eval(@x.E, env, obj:stack) = eval(E, env[x=obj], stack) */
-				obj = POP();
-				pair = NEW();
-				env = NEW();
-				make_pair(pair, AS_LAMEX(expr).param, obj);
-				make_pair(env, pair, R2);
-				R2 = env;
-				R1 = AS_LAMEX(expr).body;
-				continue;
-			case TAG_APPEX:
-				expr = AS_APPEX(expr).argument;
-				break;
-			case TAG_BINEX:
-				--ctx->sp;
-				make_frame(ctx->sp, OP_EVAL, 0, AS_BINEX(expr).left, R2, ctx->fp);
-				R1 = AS_BINEX(expr).right;
-				AR = EXTTAG(expr);
-				OP = OP_BINCONT;
-				ctx->fp = ctx->sp;
-				continue;
-			default:
-				break;
-			}
-			switch (TAG(expr)) {
-			case TAG_BINEX:
-			case TAG_APPEX:
-				obj = NEW();
-				make_thunk(obj, expr, R2);
-				break;
-			case TAG_LAMEX:
-				obj = NEW();
-				make_closure(obj, expr, R2);
-				break;
-			case TAG_VAREX:
-				name = AS_VAREX(expr).name;
-				for (env = R2; IS_PAIR(env); env = AS_PAIR(env).tail) {
-					pair = AS_PAIR(env).head;
-					if (AS_PAIR(pair).head == name) {
-						obj = AS_PAIR(pair).tail;
-						break;
-					}
-				}
-				if (IS_PAIR(env)) {
-					break;
-				}
-				for (env = ctx->gp; IS_PAIR(env); env = AS_PAIR(env).tail) {
-					pair = AS_PAIR(env).head;
-					if (AS_PAIR(pair).head == name) {
-						obj = AS_PAIR(pair).tail;
-						break;
-					}
-				}
-				if (IS_PAIR(env)) {
-					break;
-				}
-				fprintf(stderr, "Fatal error: unbounded name\n");
-				exit(1);
-			case TAG_LITEX:
-				obj = AS_LITEX(expr).object;
-				break;
-			default:
-				fprintf(stderr, "Fatal error: wrong tag for eval\n");
-				exit(1);
-			}
-			expr = R1;
-			if (IS_APPEX(expr)) {
-				/* eval(A(#obj), env, stack) = apply(A, env obj:stack) */
-				/* eval(Ax, env, stack) = eval(A, env, env[x]:stack) */
-				/* eval(A(@x.B), env, stack) = eval(A, env, cls{@x.B, env}:stack) */
-				/* eval(A(BC), env, stack) = eval(A, env, thn{BC, env}:stack) */
-				PUSH(obj);
-				R1 = AS_APPEX(expr).function;
-				continue;
-			}
-			/* eval(#obj, env, stack) = apply(obj, stack) */
-			/* eval(x, env, stack) = apply(env[x], stack) */
-			R1 = obj;
-			OP = OP_APPLY;
-			continue;
-		case OP_APPLY:
-			switch (TAG(R1)) {
-			case TAG_HOLE:
-				fprintf(stderr, "Fatal error: cyclic dependency\n");
-				exit(1);
-			case TAG_NIL:
-			case TAG_PAIR:
-			case TAG_INTEGER:
-				/* apply(obj, stack) = obj */
-				OP = OP_RETURN;
-				continue;
-			case TAG_INDIRECT:
-				/* apply(ind{obj}, stack) = apply(obj, stack) */
-				R1 = AS_INDIRECT(R1).actual;
-				continue;
-			case TAG_CLOSURE:
-				if (ctx->sp == ctx->fp) {
-					/* apply(cls{A, env}, []) = cls{A, env} */
-					OP = OP_RETURN;
-					continue;
-				}
-				/* apply(cls{A, env}, stack) = eval(A, env, stack) */
-				R2 = AS_CLOSURE(R1).env;
-				R1 = AS_CLOSURE(R1).expr;
-				OP = OP_EVAL;
-				continue;
-			case TAG_THUNK:
-				/* apply(thn{A, env}, stack) = update(thn{A, env}, eval(A, env, stack)) */
-				ensure_space(ctx, 1);
-				--ctx->sp;
-				make_frame(ctx->sp, OP_EVAL, 0, AS_THUNK(R1).expr, AS_THUNK(R1).env, ctx->fp);
-				make_hole(R1);
-				OP = OP_UPDATE;
-				ctx->fp = ctx->sp;
-				continue;
-			default:
-				fprintf(stderr, "Fatal error: wrong tag for apply\n");
-				exit(1);
-			}
-		case OP_BINCONT:
-			obj = TOS();
-			make_frame(ctx->sp, OP_EVAL, 0, R1, R2, ctx->fp);
-			R1 = obj;
-			OP = OP_BIN;
-			ctx->fp = ctx->sp;
-			continue;
-		case OP_BIN:
-			right = POP();
-			left = R1;
-			if (!IS_INTEGER(left) || !IS_INTEGER(right)) {
-				fprintf(stderr, "Fatal error: binary operator can be applied only to integers\n");
-				exit(1);
-			}
-			obj = NEW();
-			switch (AR) {
-			case EXT_ADD:
-				make_integer(obj, AS_INTEGER(left).value + AS_INTEGER(right).value);
-				break;
-			case EXT_SUB:
-				make_integer(obj, AS_INTEGER(left).value - AS_INTEGER(right).value);
-				break;
-			case EXT_MUL:
-				make_integer(obj, AS_INTEGER(left).value * AS_INTEGER(right).value);
-				break;
-			default:
-				fprintf(stderr, "Fatal error: wrong extop in binary operator\n");
-				exit(1);
-			}
-			R1 = obj;
-			OP = OP_RETURN;
-			continue;
-		case OP_RETURN:
-			obj = R1;
-			ctx->sp = ctx->fp;
-			ctx->fp = BP;
-			if (ctx->fp == NULL) {
-				return obj;
-			}
-			TOS() = obj;
-			continue;
-		case OP_UPDATE:
-			obj = POP();
-			make_indirect(R1, obj);
-			R1 = obj;
-			OP = OP_APPLY;
-			continue;
-		default:
-			fprintf(stderr, "Fatal error: unknown op\n");
-			exit(1);
+#define GC() \
+	do { \
+		ctx->sp = sp; \
+		ctx->fp = fp; \
+		ctx->free_mem = free_mem; \
+		compact(ctx); \
+		free_mem = ctx->free_mem; \
+	} while (0)
+
+cell_t *interpret(struct context *ctx) {
+	value_t *ep, *sp, *fp, *bp;
+	cell_t *free_mem, *meta_mem, *binds;
+	cell_t *expr, *env, *obj, *name, *iter, *pair, *tmp, *left, *right;
+	unsigned char op;
+	/* init */
+	free_mem = ctx->free_mem;
+	meta_mem = ctx->meta_mem;
+	binds = ctx->binds;
+	ep = ctx->ep;
+	sp = ctx->sp;
+	fp = ctx->fp;
+	bp = ctx->bp;
+	obj = AS_PAIR(AS_PAIR(binds).head).tail;
+enter:
+	/* arguments: obj */
+	switch (TAG(obj)) {
+	case TAG_HOLE:
+		fprintf(stderr, "Fatal error: cyclic dependency\n");
+		exit(1);
+	case TAG_NIL:
+	case TAG_PAIR:
+	case TAG_INTEGER:
+		goto cont;
+	case TAG_INDIRECT:
+		obj = AS_INDIRECT(obj).actual;
+		goto enter;
+	case TAG_CLOSURE:
+		if (sp == fp) {
+			goto cont;
 		}
+		expr = AS_CLOSURE(obj).expr;
+		env = AS_CLOSURE(obj).env;
+		goto eval;
+	case TAG_THUNK:
+		STACK_CHECK(3);
+		expr = AS_CLOSURE(obj).expr;
+		env = AS_CLOSURE(obj).env;
+		make_hole(obj);
+		{
+			/* push update */
+			PUSH(obj);
+			(--sp)->fp = fp;
+			(--sp)->op = OP_UPDATE;
+			fp = sp;
+		}
+		goto eval;
+	default:
+		fprintf(stderr, "Fatal error: wrong tag for apply\n");
+		exit(1);
 	}
-}
-
-static void ensure_space(struct context *ctx, int count) {
-	if (ctx->sp - ctx->hp < count) {
-		compact(ctx);
-		if (ctx->sp - ctx->hp < count) {
-			fprintf(stderr, "Runtime error: memory is out\n");
+eval:
+	/* arguments: expr, env */
+	switch (TAG(expr)) {
+	case TAG_LITEX:
+		obj = AS_LITEX(expr).object;
+		goto enter;
+	case TAG_VAREX:
+		name = AS_VAREX(expr).name;
+		for (iter = env; IS_PAIR(iter); iter = AS_PAIR(iter).tail) {
+			pair = AS_PAIR(iter).head;
+			if (name == AS_PAIR(pair).head) {
+				obj = AS_PAIR(pair).tail;
+				goto enter;
+			}
+		}
+		for (iter = binds; IS_PAIR(iter); iter = AS_PAIR(iter).tail) {
+			pair = AS_PAIR(iter).head;
+			if (name == AS_PAIR(pair).head) {
+				obj = AS_PAIR(pair).tail;
+				goto enter;
+			}
+		}
+		fprintf(stderr, "Fatal error: unbounded name\n");
+		exit(1);
+	case TAG_LAMEX:
+		if (meta_mem - free_mem < 2) {
+			PUSH(expr);
+			PUSH(env);
+			GC();
+			if (meta_mem - free_mem < 2) {
+				fprintf(stderr, "Runtime error: memory is out\n");
+				exit(1);
+			}
+			env = POP();
+			expr = POP();
+		}
+		if (sp == fp) {
+			obj = NEW();
+			make_closure(obj, expr, env);
+			goto cont;
+		}
+		obj = POP();
+		pair = NEW();
+		make_pair(pair, AS_LAMEX(expr).param, obj);
+		tmp = NEW();
+		make_pair(tmp, pair, env);
+		env = tmp;
+		expr = AS_LAMEX(expr).body;
+		goto eval;
+	case TAG_APPEX:
+		STACK_CHECK(4);
+		{
+			/* push eval */
+			PUSH(AS_APPEX(expr).function);
+			PUSH(env);
+			(--sp)->fp = fp;
+			(--sp)->op = OP_EVAL;
+			fp = sp;
+		}
+		expr = AS_APPEX(expr).argument;
+		goto eval;
+	case TAG_BINEX:
+		STACK_CHECK(4);
+		{
+			/* push right */
+			PUSH(expr);
+			PUSH(env);
+			(--sp)->fp = fp;
+			(--sp)->op = OP_RIGHT;
+			fp = sp;
+		}
+		expr = AS_BINEX(expr).left;
+		goto eval;
+	default:
+		fprintf(stderr, "Fatal error: wrong tag for eval\n");
+		exit(1);
+	}
+cont:
+	/* arguments: obj */
+	if (fp == bp) {
+		return obj;
+	}
+	sp = fp;
+	op = (sp++)->op;
+	fp = (sp++)->fp;
+	switch (op) {
+	case OP_UPDATE:
+		tmp = POP();
+		make_indirect(tmp, obj);
+		goto enter;
+	case OP_EVAL:
+		env = POP();
+		expr = POP();
+		PUSH(obj);
+		goto eval;
+	case OP_RIGHT:
+		env = POP();
+		expr = POP();
+		{
+			/* push bin */
+			PUSH(expr);
+			PUSH(obj);
+			(--sp)->fp = fp;
+			(--sp)->op = OP_BIN;
+			fp = sp;
+		}
+		expr = AS_BINEX(expr).right;
+		goto eval;
+	case OP_BIN:
+		if (meta_mem - free_mem < 1) {
+			PUSH(obj);
+			GC();
+			if (meta_mem - free_mem < 1) {
+				fprintf(stderr, "Runtime error: memory is out\n");
+				exit(1);
+			}
+			obj = POP();
+		}
+		right = obj;
+		left = POP();
+		expr = POP();
+		obj = NEW();
+		switch (EXTTAG(expr)) {
+		case EXT_ADD:
+			make_integer(obj, AS_INTEGER(left).value + AS_INTEGER(right).value);
+			break;
+		case EXT_SUB:
+			make_integer(obj, AS_INTEGER(left).value - AS_INTEGER(right).value);
+			break;
+		case EXT_MUL:
+			make_integer(obj, AS_INTEGER(left).value * AS_INTEGER(right).value);
+			break;
+		default:
+			fprintf(stderr, "Fatal error: wrong extop in binary operator\n");
 			exit(1);
 		}
+		goto cont;
+	default:
+		fprintf(stderr, "Fatal error: unknown op\n");
+		exit(1);
 	}
 }

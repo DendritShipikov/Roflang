@@ -4,30 +4,29 @@
 #include "roflang.h"
 
 static void walk_context(struct context *ctx, void (*visit)(cell_t **)) {
-	cell_t *p = ctx->sp;
-	cell_t *q = ctx->fp;
-	while (q != NULL) {
-		for (; p < q; ++p) {
-			visit(&p->ref.value);
+	unsigned char op;
+	value_t *sp = ctx->sp;
+	value_t *fp = ctx->fp;
+	value_t *bp = ctx->bp;
+	while (fp != bp) {
+		for (; sp < fp; ++sp) {
+			visit(&sp->obj);
 		}
-		switch (q->frame.op) {
+		op = (sp++)->op;
+		fp = (sp++)->fp;
+		switch (op) {
 		case OP_EVAL:
-		case OP_BINCONT:
-			visit(&q->frame.r2);
-		case OP_BIN:
-		case OP_APPLY:
 		case OP_UPDATE:
-		case OP_RETURN:
-			visit(&q->frame.r1);
+		case OP_RIGHT:
+		case OP_BIN:
 			break;
 		default:
 			fprintf(stderr, "Fatal error: wrong op while walking context\n");
 			exit(1);
 		}
-		p = q + 1;
-		q = q->frame.bp;
 	}
-	visit(&ctx->gp);
+	visit(&ctx->binds);
+	visit(&ctx->names);
 }
 
 static void walk_object(cell_t *p, void (*visit)(cell_t **)) {
@@ -108,8 +107,8 @@ static void adjust(cell_t **pp) {
 
 void compact(struct context *ctx) {
 	cell_t *p, *q;
-	cell_t *mp = ctx->mp;
-	cell_t *hp = ctx->hp;
+	cell_t *heap_mem = ctx->heap_mem;
+	cell_t *free_mem = ctx->free_mem;
 	mark_stack = NULL;
 
 	/* roots */
@@ -123,24 +122,24 @@ void compact(struct context *ctx) {
 	}
 
 	/* calculate */
-	for (q = p = mp; p < hp; ++p) {
+	for (q = p = heap_mem; p < free_mem; ++p) {
 		if (MARKWORD(p)) {
 			FORWARD(p) = q++;
 			SET_MOVEABLE(p);
 		}
 	}
-	ctx->hp = q;
+	ctx->free_mem = q;
 
 	/* adjust */
 	walk_context(ctx, adjust);
-	for (p = mp; p < hp; ++p) {
+	for (p = heap_mem; p < free_mem; ++p) {
 		if (MARKWORD(p)) {
 			walk_object(p, adjust);
 		}
 	}
 
 	/* move */
-	for (p = mp; p < hp; ++p) {
+	for (p = heap_mem; p < free_mem; ++p) {
 		if (MARKWORD(p)) {
 			MARKWORD(p) = 0;
 			q = FORWARD(p);
