@@ -71,11 +71,3 @@ void make_litex(cell_t *p, cell_t *object) {
 void make_hole(cell_t *p) {
 	make_object(p, TAG_HOLE);
 }
-
-void make_frame(cell_t *p, unsigned char op, unsigned char ar, cell_t *r1, cell_t *r2, cell_t *bp) {
-	p->frame.op = op;
-	p->frame.ar = ar;
-	p->frame.r1 = r1;
-	p->frame.r2 = r2;
-	p->frame.bp = bp;
-}

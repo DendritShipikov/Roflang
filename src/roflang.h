@@ -23,79 +23,67 @@ enum {
 	EXT_MUL,
 };
 
-typedef union cell {
-	struct {
-		unsigned char tag;
-		unsigned char exttag;
-		unsigned char markword;
-		union cell *forward;
-		union {
-			struct {
-				union cell *head;
-				union cell *tail;
-			} pair;
-			struct {
-				char head;
-				union cell *tail;
-			} symbol;
-			struct {
-				union cell *expr;
-				union cell *env;
-			} closure, thunk;
-			struct {
-				union cell *function;
-				union cell *argument;
-			} appex;
-			struct {
-				union cell *left;
-				union cell *right;
-			} binex;
-			struct {
-				union cell *param;
-				union cell *body;
-			} lamex;
-			struct {
-				union cell *name;
-			} varex;
-			struct {
-				union cell *object;
-			} litex;
-			struct {
-				union cell *actual;
-			} indirect;
-			struct {
-				int value;
-			} integer;
-		} payload;
-	} object;
-	struct {
-		unsigned char op;
-		unsigned char ar;
-		union cell *r1;
-		union cell *r2;
-		union cell *bp;
-	} frame;
-	struct {
-		union cell *value;
-	} ref;
+typedef struct cell {
+	unsigned char tag;
+	unsigned char exttag;
+	unsigned char markword;
+	struct cell *forward;
+	union {
+		struct {
+			struct cell *head;
+			struct cell *tail;
+		} pair;
+		struct {
+			char head;
+			struct cell *tail;
+		} symbol;
+		struct {
+			struct cell *expr;
+			struct cell *env;
+		} closure, thunk;
+		struct {
+			struct cell *function;
+			struct cell *argument;
+		} appex;
+		struct {
+			struct cell *left;
+			struct cell *right;
+		} binex;
+		struct {
+			struct cell *param;
+			struct cell *body;
+		} lamex;
+		struct {
+			struct cell *name;
+		} varex;
+		struct {
+			struct cell *object;
+		} litex;
+		struct {
+			struct cell *actual;
+		} indirect;
+		struct {
+			int value;
+		} integer;
+	} payload;
 } cell_t;
 
-#define TAG(C) ((C)->object.tag)
-#define EXTTAG(C) ((C)->object.exttag)
-#define FORWARD(C) ((C)->object.forward)
-#define MARKWORD(C) ((C)->object.markword)
+#define TAG(C) ((C)->tag)
+#define EXTTAG(C) ((C)->exttag)
+#define FORWARD(C) ((C)->forward)
+#define MARKWORD(C) ((C)->markword)
 
-#define AS_PAIR(C)     ((C)->object.payload.pair)
-#define AS_CLOSURE(C)  ((C)->object.payload.closure)
-#define AS_THUNK(C)    ((C)->object.payload.thunk)
-#define AS_INDIRECT(C) ((C)->object.payload.indirect)
-#define AS_INTEGER(C)  ((C)->object.payload.integer)
-#define AS_SYMBOL(C)   ((C)->object.payload.symbol)
-#define AS_APPEX(C)    ((C)->object.payload.appex)
-#define AS_BINEX(C)    ((C)->object.payload.binex)
-#define AS_LAMEX(C)    ((C)->object.payload.lamex)
-#define AS_VAREX(C)    ((C)->object.payload.varex)
-#define AS_LITEX(C)    ((C)->object.payload.litex)
+#define AS_PAIR(C)     ((C)->payload.pair)
+#define AS_CLOSURE(C)  ((C)->payload.closure)
+#define AS_THUNK(C)    ((C)->payload.thunk)
+#define AS_INDIRECT(C) ((C)->payload.indirect)
+#define AS_INTEGER(C)  ((C)->payload.integer)
+#define AS_SYMBOL(C)   ((C)->payload.symbol)
+#define AS_APPEX(C)    ((C)->payload.appex)
+#define AS_BINEX(C)    ((C)->payload.binex)
+#define AS_LAMEX(C)    ((C)->payload.lamex)
+#define AS_VAREX(C)    ((C)->payload.varex)
+#define AS_LITEX(C)    ((C)->payload.litex)
 
 #define IS_PAIR(C)     (TAG(C) == TAG_PAIR)
 #define IS_CLOSURE(C)  (TAG(C) == TAG_CLOSURE)
@@ -121,8 +109,6 @@ void make_lamex(cell_t *p, cell_t *param, cell_t *body);
 void make_varex(cell_t *p, cell_t *name);
 void make_litex(cell_t *p, cell_t *object);
 void make_hole(cell_t *p);
-
-void make_frame(cell_t *p, unsigned char op, unsigned char ar, cell_t *r1, cell_t *r2, cell_t *bp);
 
 
 typedef union value {

@@ -23,7 +23,7 @@ static char tokenize(struct parser *p) {
 }
 
 cell_t *parse(struct parser *p) {
-	static cell_t nil = { .object = { .tag = TAG_NIL, .markword = 0 } };
+	static cell_t nil;
 	cell_t *env = &nil;
 	for (;;) {
 		char c = tokenize(p);
@@ -207,7 +207,7 @@ cell_t *parse_item(struct parser *p) {
 }
 
 cell_t *parse_name(struct parser *p) {
-	static cell_t nil = { .object = { .tag = TAG_NIL, .markword = 0 } };
+	static cell_t nil;
 	cell_t *name = &nil;
 	cell_t *top = p->top;
 	while (is_alpha(*p->cur)) {
